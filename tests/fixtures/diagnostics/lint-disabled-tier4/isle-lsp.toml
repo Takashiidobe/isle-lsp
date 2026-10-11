@@ -1,2 +1,2 @@
 [lints]
-disable = ["partial-but-total", "multi-single-result"]
+disable = ["partial-but-total", "multi-single-result", "priority-gap", "unneeded-priority"]

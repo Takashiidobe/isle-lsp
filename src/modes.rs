@@ -107,13 +107,19 @@ fn render_diagnostics(input: &Input) -> String {
             ));
             if let Some(uri) = Uri::from_file_path(&file.path) {
                 for action in actions::quick_fixes(&uri, std::slice::from_ref(diagnostic)) {
-                    for edit in action.edit.iter().filter_map(|edit| edit.changes.as_ref()).flat_map(|c| c.values().flatten()) {
-                        out.push_str(&format!(
-                            "  fix {} {} => {:?}\n",
-                            action.title,
-                            range(&file.path, edit.range),
-                            edit.new_text
-                        ));
+                    let mut targets: Vec<_> = action.edit.iter().filter_map(|edit| edit.changes.as_ref()).flatten().collect();
+                    targets.sort_by_key(|(target, _)| target.to_string());
+                    for (target, edits) in targets {
+                        let path = target.to_file_path().map(|p| p.into_owned()).unwrap_or_default();
+                        let elsewhere = if path == file.path { String::new() } else { format!("{} ", relative(&path)) };
+                        for edit in edits {
+                            out.push_str(&format!(
+                                "  fix {} {elsewhere}{} => {:?}\n",
+                                action.title,
+                                range(&path, edit.range),
+                                edit.new_text
+                            ));
+                        }
                     }
                 }
             }
@@ -291,8 +297,10 @@ fn render_navigate(input: &Input) -> String {
             },
             "twin" => match lints::twin_fix(&loaded, file, offset) {
                 Some(fix) => {
-                    let place = navigation::Place { file, span: fix.span };
-                    out.push_str(&format!("  {} {} => {:?}\n", fix.title, locate_span(input, &loaded, place), fix.new_text));
+                    for edit in &fix.edits {
+                        let place = navigation::Place { file: edit.file, span: edit.span };
+                        out.push_str(&format!("  {} {} => {:?}\n", fix.title, locate_span(input, &loaded, place), edit.new_text));
+                    }
                 }
                 None => out.push_str("  none\n"),
             },

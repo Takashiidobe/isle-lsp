@@ -1,0 +1,24 @@
+(decl foo (u32 u32) u32)
+(rule 2 (foo 0 0) 1)
+(rule 1 (foo 0 x) 2)
+(rule (foo x y) 3)
+;  ^ view trie foo
+; mode: navigate
+; check: === navigate ===
+; nextln: view 3:3 trie foo
+; nextln: title: Decision trie of foo
+; nextln: == Trie ==
+; nextln: match v0
+; nextln: 0
+; nextln: match v1
+; nextln: 0
+; nextln: return v2 = 1 [priority 2, view/priority-after/main.isle line 1]
+; nextln: return v3 = 2 [priority 1, view/priority-after/main.isle line 2]
+; nextln: return v4 = 3 [priority 0, view/priority-after/main.isle line 3]
+; nextln: == Trie page ==
+; nextln: (html page)
+; nextln: == Rules in evaluation order ==
+; nextln: # | rule | priority | location
+; nextln: 1 | - | 2 | view/priority-after/main.isle line 1
+; nextln: 2 | - | 1 | view/priority-after/main.isle line 2
+; nextln: 3 | - | 0 | view/priority-after/main.isle line 3

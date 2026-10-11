@@ -66,10 +66,26 @@ Two more groups run alongside the semantic layer on a complete project:
     has exactly one rule, and nothing in that rule calls a multi term. Related
     location: that rule.
 
+  - `priority-gap` and `unneeded-priority`: a rule's priority is higher than
+    the project needs. They compile the project and, for each term, take the
+    pairs of rules that may overlap at different priorities, the only pairs
+    whose order matters. Every rule then gets the smallest priority above those
+    of the overlapping rules it must beat (0 if there are none). A rule with a
+    higher explicit priority than that gets `priority-gap` when it takes part in
+    such a pair and `unneeded-priority` when it does not. They are skipped when
+    the project does not compile or a term has more than 3000 rules. The quick
+    fix renumbers every rule of the term that differs, in any file, as one
+    edit: it replaces a priority, removes one that becomes 0 and adds one to a
+    rule that has none. The ordering of overlapping rules, and so the decision
+    trie, is unchanged.
+
   Rules that repeat each other under variable renaming need no lint of their
   own, because Cranelift already reports them as `shadowed` or `overlap`
   errors. Run over Cranelift 0.136.2's `src/opts` (46 `partial` and 7 `multi`
-  declarations), `partial-but-total` and `multi-single-result` report nothing.
+  declarations), `partial-but-total` and `multi-single-result` report nothing,
+  and `priority-gap` reports 28 rules of four terms (`all_zero`,
+  `iadd_uextend`, `isub_uextend` and one in `prelude_opt.isle`), which use
+  priorities as explicit tie-breakers. Disable it there if you prefer that style.
 
   Cranelift's own mid-end moves constants to the right before `simplify` runs,
   so it deliberately has no twin rules and `missing-commutative-twin` fires on

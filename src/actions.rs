@@ -33,21 +33,28 @@ pub fn quick_fixes(uri: &Uri, diagnostics: &[Diagnostic]) -> Vec<CodeAction> {
             continue;
         };
         for fix in fixes {
-            let (Some(title), Some(new_text), Some(range)) = (
-                fix.get("title").and_then(|title| title.as_str()),
-                fix.get("newText").and_then(|text| text.as_str()),
-                fix.get("range").and_then(|range| serde_json::from_value::<Range>(range.clone()).ok()),
-            ) else {
+            let Some(title) = fix.get("title").and_then(|title| title.as_str()) else { continue };
+            let mut changes: HashMap<Uri, Vec<TextEdit>> = HashMap::new();
+            let single = [fix.clone()];
+            let edits = fix.get("edits").and_then(|edits| edits.as_array()).map_or(&single[..], Vec::as_slice);
+            for edit in edits {
+                let (Some(new_text), Some(range)) = (
+                    edit.get("newText").and_then(|text| text.as_str()),
+                    edit.get("range").and_then(|range| serde_json::from_value::<Range>(range.clone()).ok()),
+                ) else {
+                    continue;
+                };
+                let target = edit.get("uri").and_then(|target| serde_json::from_value::<Uri>(target.clone()).ok()).unwrap_or_else(|| uri.clone());
+                changes.entry(target).or_default().push(TextEdit { range, new_text: new_text.to_owned() });
+            }
+            if changes.is_empty() {
                 continue;
-            };
+            }
             actions.push(CodeAction {
                 title: title.to_owned(),
                 kind: Some(CodeActionKind::QUICKFIX),
                 diagnostics: Some(vec![diagnostic.clone()]),
-                edit: Some(WorkspaceEdit {
-                    changes: Some(HashMap::from([(uri.clone(), vec![TextEdit { range, new_text: new_text.to_owned() }])])),
-                    ..WorkspaceEdit::default()
-                }),
+                edit: Some(WorkspaceEdit { changes: Some(changes), ..WorkspaceEdit::default() }),
                 ..CodeAction::default()
             });
         }

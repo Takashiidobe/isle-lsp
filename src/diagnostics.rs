@@ -101,9 +101,16 @@ fn rule_lints(loaded: &Loaded, disabled: &[String], found: &mut [Vec<Diagnostic>
             diag.related_information = Some(related);
         }
         if let Some(fix) = lint.fix {
-            diag.data = Some(serde_json::json!({
-                "fixes": [{ "title": fix.title, "range": range_of(source, fix.span), "newText": fix.new_text }]
-            }));
+            let edits: Vec<serde_json::Value> = fix
+                .edits
+                .iter()
+                .filter_map(|edit| {
+                    let target = &loaded.sources[edit.file];
+                    let uri = Uri::from_file_path(&target.path)?;
+                    Some(serde_json::json!({ "uri": uri, "range": range_of(target, edit.span), "newText": edit.new_text }))
+                })
+                .collect();
+            diag.data = Some(serde_json::json!({ "fixes": [{ "title": fix.title, "edits": edits }] }));
         }
         found[lint.file].push(diag);
     }

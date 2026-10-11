@@ -1,3 +1,4 @@
+use crate::priority;
 use crate::project::Loaded;
 use crate::rules::{self, Rule, Shape};
 use crate::syntax::{AtomKind, FormKind, Node, Span, form_kind};
@@ -13,10 +14,15 @@ pub const MULTI_SINGLE: &str = "multi-single-result";
 
 pub const COMMUTATIVE: [&str; 9] = ["iadd", "imul", "band", "bor", "bxor", "smin", "smax", "umin", "umax"];
 
-pub struct Fix {
-    pub title: String,
+pub struct FixEdit {
+    pub file: usize,
     pub span: Span,
     pub new_text: String,
+}
+
+pub struct Fix {
+    pub title: String,
+    pub edits: Vec<FixEdit>,
 }
 
 pub struct Lint {
@@ -57,6 +63,9 @@ pub fn run(loaded: &Loaded, disabled: &[String]) -> Vec<Lint> {
     let decls = decls(loaded);
     partial_but_total(&all, &decls, &mut found);
     multi_single_result(&all, &decls, &mut found);
+    if !(disabled.iter().any(|code| code == priority::UNNEEDED) && disabled.iter().any(|code| code == priority::GAP)) {
+        found.extend(priority::run(loaded));
+    }
     found.retain(|lint| !disabled.iter().any(|code| code == lint.code));
     found
 }
@@ -289,8 +298,11 @@ fn twins(infos: &[Info], found: &mut Vec<Lint>) {
         let mut lint = lint(info, TWIN, format!("heuristic: no rule matches `{op}` with its operands in the other order"));
         lint.fix = Some(Fix {
             title: "Add the flipped rule".to_owned(),
-            span: Span { start: info.rule.form.end, end: info.rule.form.end },
-            new_text: format!("\n{}", flipped_text(info.rule, a, b)),
+            edits: vec![FixEdit {
+                file: info.rule.file,
+                span: Span { start: info.rule.form.end, end: info.rule.form.end },
+                new_text: format!("\n{}", flipped_text(info.rule, a, b)),
+            }],
         });
         found.push(lint);
     }

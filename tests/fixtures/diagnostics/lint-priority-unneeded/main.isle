@@ -1,0 +1,7 @@
+(decl foo (u32) u32)
+(rule 5 (foo 0) 1)
+(rule (foo 1) 2)
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/lint-priority-unneeded/main.isle 1:6..1:7 warning[unneeded-priority] heuristic: priority 5 does not decide the order of any overlapping rules of `foo`
+; nextln: fix Renumber the priorities of `foo` minimally 1:6..1:8 => ""

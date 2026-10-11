@@ -16,6 +16,7 @@ pub mod lints;
 pub mod modes;
 pub mod parser;
 pub mod rules;
+pub mod priority;
 pub mod project;
 pub mod refactor;
 pub mod rustview;

@@ -2,6 +2,13 @@
 (rule (pick x) x)
 (decl multi one (u32) u32)
 (rule (one x) x)
+(decl foo (u32 u32) u32)
+(rule 100 (foo 0 0) 1)
+(rule 10 (foo 0 x) 2)
+(rule (foo x y) 3)
+(decl bar (u32) u32)
+(rule 5 (bar 0) 1)
+(rule (bar 1) 2)
 ; mode: diagnostics
 ; check: === diagnostics ===
 ; nextln: no diagnostics

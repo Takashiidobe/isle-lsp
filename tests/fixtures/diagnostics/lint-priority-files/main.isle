@@ -1,0 +1,11 @@
+(decl foo (u32 u32) u32)
+(rule 100 (foo 0 0) 1)
+(rule (foo x y) 3)
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/lint-priority-files/main.isle 1:6..1:9 warning[priority-gap] heuristic: priority 100 could be 2, which keeps the order of every overlapping rule of `foo`
+; nextln: fix Renumber the priorities of `foo` minimally 1:6..1:9 => "2"
+; nextln: fix Renumber the priorities of `foo` minimally diagnostics/lint-priority-files/other.isle 0:6..0:8 => "1"
+; nextln: diagnostics/lint-priority-files/other.isle 0:6..0:8 warning[priority-gap] heuristic: priority 10 could be 1, which keeps the order of every overlapping rule of `foo`
+; nextln: fix Renumber the priorities of `foo` minimally diagnostics/lint-priority-files/main.isle 1:6..1:9 => "2"
+; nextln: fix Renumber the priorities of `foo` minimally 0:6..0:8 => "1"

@@ -1,0 +1,10 @@
+(decl foo (u32 u32) u32)
+(rule 2 (foo 0 0) 1)
+(rule 1 (foo 0 x) 2)
+(rule (foo x y) 3)
+(decl bar (u32) u32)
+(rule -3 (bar x) x)
+(rule (bar 0) 1)
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: no diagnostics

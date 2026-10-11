@@ -604,9 +604,11 @@ impl LanguageServer for Backend {
             if let Some((title, place)) = actions::unused_decl(&analysis.index, &analysis.loaded, analysis.file, analysis.offset) {
                 push(title, CodeActionKind::QUICKFIX, TextEdit { range: analysis.range(place), new_text: String::new() });
             }
-            if let Some(fix) = lints::twin_fix(&analysis.loaded, analysis.file, analysis.offset) {
-                let place = Place { file: analysis.file, span: fix.span };
-                push(fix.title, CodeActionKind::REFACTOR, TextEdit { range: analysis.range(place), new_text: fix.new_text });
+            if let Some(fix) = lints::twin_fix(&analysis.loaded, analysis.file, analysis.offset)
+                && let Some(edit) = fix.edits.into_iter().next()
+            {
+                let place = Place { file: edit.file, span: edit.span };
+                push(fix.title, CodeActionKind::REFACTOR, TextEdit { range: analysis.range(place), new_text: edit.new_text });
             }
             let end = self.documents.read().await.get(uri).map_or(analysis.offset, |document| document.offset(params.range.end));
             for refactoring in refactor::all(&analysis.loaded, &analysis.index, analysis.file, analysis.offset, end) {

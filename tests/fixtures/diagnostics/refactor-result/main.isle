@@ -6,7 +6,7 @@
 (rule (twice x) (bar x x))
 (rule (extracted_1 x) (bar x 1))
 (rule foo_2 (foo 0) (twice (extracted_1 5)))
-(rule foo_3 1 (foo 1) (bar (bar 5 1) (bar 5 1)))
+(rule foo_3 (foo 1) (bar (bar 5 1) (bar 5 1)))
 (rule (foo 2) 2)
 ; mode: diagnostics
 ; check: no diagnostics
