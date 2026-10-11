@@ -10,6 +10,7 @@ use tower_lsp_server::ls_types::{
 };
 
 use crate::document::position_in;
+use crate::lints;
 use crate::project::{Loaded, Project, Source};
 use crate::index::{DefKind, Index};
 use crate::syntax::{AtomKind, List, Node, Span};
@@ -48,6 +49,7 @@ pub fn all(project: &Project, loaded: &Loaded) -> Vec<FileDiagnostics> {
                     place(loaded, &mut found, error);
                 }
                 unused_decls(loaded, &mut found);
+                rule_lints(loaded, &project.disabled_lints, &mut found);
             }
         }
     }
@@ -76,6 +78,34 @@ fn unused_decls(loaded: &Loaded, found: &mut [Vec<Diagnostic>]) {
         );
         diag.tags = Some(vec![DiagnosticTag::UNNECESSARY]);
         found[def.file].push(diag);
+    }
+}
+
+fn rule_lints(loaded: &Loaded, disabled: &[String], found: &mut [Vec<Diagnostic>]) {
+    for lint in lints::run(loaded, disabled) {
+        let source = &loaded.sources[lint.file];
+        let mut diag = diagnostic(source, lint.span, DiagnosticSeverity::WARNING, lint.code, &lint.message);
+        let related: Vec<DiagnosticRelatedInformation> = lint
+            .related
+            .iter()
+            .filter_map(|&(file, span)| {
+                let other = &loaded.sources[file];
+                let uri = Uri::from_file_path(&other.path)?;
+                Some(DiagnosticRelatedInformation {
+                    location: Location::new(uri, range_of(other, span)),
+                    message: "related rule".to_owned(),
+                })
+            })
+            .collect();
+        if !related.is_empty() {
+            diag.related_information = Some(related);
+        }
+        if let Some(fix) = lint.fix {
+            diag.data = Some(serde_json::json!({
+                "fixes": [{ "title": fix.title, "range": range_of(source, fix.span), "newText": fix.new_text }]
+            }));
+        }
+        found[lint.file].push(diag);
     }
 }
 

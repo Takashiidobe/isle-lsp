@@ -9,6 +9,7 @@ pub struct Rule<'a> {
     pub list: &'a List,
     pub name: Option<Span>,
     pub priority: i64,
+    pub priority_span: Option<Span>,
     pub head: &'a str,
     pub head_span: Span,
     pub args: &'a [Node],
@@ -54,10 +55,12 @@ fn parse<'a>(file: usize, text: &'a str, list: &'a List) -> Option<Rule<'a>> {
         idx += 1;
     }
     let mut priority = 0;
+    let mut priority_span = None;
     if let Some(Node::Atom(atom)) = list.items.get(idx)
         && atom.kind == AtomKind::Int
     {
         priority = atom.span.text(text).replace('_', "").parse().unwrap_or(0);
+        priority_span = Some(atom.span);
         idx += 1;
     }
     let Some(Node::List(lhs)) = list.items.get(idx) else { return None };
@@ -72,6 +75,7 @@ fn parse<'a>(file: usize, text: &'a str, list: &'a List) -> Option<Rule<'a>> {
         list,
         name,
         priority,
+        priority_span,
         head: head.span.text(text),
         head_span: head.span,
         args: lhs.items.get(1..).unwrap_or_default(),
@@ -124,7 +128,7 @@ pub fn shapes(text: &str, nodes: &[Node]) -> Vec<Shape> {
 
 pub fn cost(shape: &Shape) -> usize {
     match shape {
-        Shape::Call(_, args) => 1 + args.iter().map(cost).sum::<usize>(),
+        Shape::Call(head, args) => usize::from(!head.contains("iconst")) + args.iter().map(cost).sum::<usize>(),
         Shape::And(parts) => parts.iter().map(cost).sum(),
         Shape::Other => 1,
         _ => 0,

@@ -1,0 +1,10 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: no diagnostics
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl iadd (Value Value) Value)
+(extern extractor infallible iadd iadd_extract)
+(decl iconst (u64) Value)
+(extern extractor infallible iconst iconst_extract)
+(rule (simplify (iadd x (iconst 0))) x)

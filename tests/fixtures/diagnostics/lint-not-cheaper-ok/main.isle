@@ -1,0 +1,9 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: no diagnostics
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl ineg (Value) Value)
+(extern extractor infallible ineg ineg_extract)
+(extern constructor ineg ineg_ctor)
+(rule (simplify (ineg (ineg x))) x)

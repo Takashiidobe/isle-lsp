@@ -7,6 +7,7 @@ pub mod index;
 pub mod inlay;
 pub mod navigation;
 pub mod lexer;
+pub mod lints;
 pub mod modes;
 pub mod parser;
 pub mod rules;

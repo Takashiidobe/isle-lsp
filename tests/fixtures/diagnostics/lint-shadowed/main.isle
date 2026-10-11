@@ -1,0 +1,16 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/lint-shadowed/main.isle 9:0..9:39 error[shadowed] this rule can never match: a higher-priority, more general rule always matches first
+; nextln: related diagnostics/lint-shadowed/main.isle 8:0..8:32 shadowed by this rule
+; nextln: diagnostics/lint-shadowed/main.isle 9:0..9:39 warning[shadowed-by-priority] heuristic: this rule can never fire, a rule with a higher priority matches everything it matches
+; nextln: related diagnostics/lint-shadowed/main.isle 8:0..8:32 related rule
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl isub (Value Value) Value)
+(extern extractor infallible isub isub_extract)
+(extern constructor isub isub_ctor)
+(decl iconst (u64) Value)
+(extern extractor infallible iconst iconst_extract)
+(extern constructor iconst iconst_ctor)
+(rule 1 (simplify (isub x y)) y)
+(rule (simplify (isub x (iconst 0))) x)

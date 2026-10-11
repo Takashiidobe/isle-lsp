@@ -1,0 +1,26 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/lint-loop/main.isle 12:0..12:46 error[overlap] rules are overlapping: give one of them a higher priority, for example `(rule 1 ...)`
+; nextln: fix Give this rule priority 1 12:5..12:5 => " 1"
+; nextln: related diagnostics/lint-loop/main.isle 11:0..11:46 overlaps with this rule
+; nextln: diagnostics/lint-loop/main.isle 11:0..11:46 error[overlap] rules are overlapping: give one of them a higher priority, for example `(rule 1 ...)`
+; nextln: fix Give this rule priority 1 11:5..11:5 => " 1"
+; nextln: related diagnostics/lint-loop/main.isle 12:0..12:46 overlaps with this rule
+; nextln: diagnostics/lint-loop/main.isle 11:0..11:46 warning[not-cheaper] heuristic: the right-hand side is not cheaper than the left-hand side (2 operations against 1)
+; nextln: diagnostics/lint-loop/main.isle 11:0..11:46 warning[rewrite-loop] heuristic: the result of this rule can be rewritten back by another rule, which may loop
+; nextln: related diagnostics/lint-loop/main.isle 12:0..12:46 related rule
+; nextln: diagnostics/lint-loop/main.isle 12:0..12:46 warning[rewrite-loop] heuristic: the result of this rule can be rewritten back by another rule, which may loop
+; nextln: related diagnostics/lint-loop/main.isle 11:0..11:46 related rule
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl iadd (Value Value) Value)
+(extern extractor infallible iadd iadd_extract)
+(extern constructor iadd iadd_ctor)
+(decl isub (Value Value) Value)
+(extern extractor infallible isub isub_extract)
+(extern constructor isub isub_ctor)
+(decl ineg (Value) Value)
+(extern extractor infallible ineg ineg_extract)
+(extern constructor ineg ineg_ctor)
+(rule (simplify (isub x y)) (iadd x (ineg y)))
+(rule (simplify (iadd x (ineg y))) (isub x y))

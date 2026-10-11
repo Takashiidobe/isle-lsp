@@ -1,0 +1,13 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: no diagnostics
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl isub (Value Value) Value)
+(extern extractor infallible isub isub_extract)
+(extern constructor isub isub_ctor)
+(decl iconst (u64) Value)
+(extern extractor infallible iconst iconst_extract)
+(extern constructor iconst iconst_ctor)
+(rule 1 (simplify (isub x (iconst 0))) x)
+(rule (simplify (isub x y)) y)

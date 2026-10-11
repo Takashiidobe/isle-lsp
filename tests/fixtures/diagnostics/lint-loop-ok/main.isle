@@ -1,0 +1,13 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: no diagnostics
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl iadd (Value Value) Value)
+(extern extractor infallible iadd iadd_extract)
+(extern constructor iadd iadd_ctor)
+(decl isub (Value Value) Value)
+(extern constructor isub isub_ctor)
+(decl ineg (Value) Value)
+(extern extractor infallible ineg ineg_extract)
+(rule (simplify (iadd x (ineg y))) (isub x y))

@@ -34,10 +34,37 @@ clean:
    - `shadowed` and `unreachable`: a rule that can never match.
    - `recursion`: a term that recurses without the `rec` attribute.
 
-If a file the project lists is missing, or the project is a Cranelift mid-end
-set without its generated `numerics.isle` and `clif_opt.isle`, semantic checks
-are skipped and an `incomplete-project` warning explains why. Checking without
-the generated files would report every CLIF term as unknown.
+If a file the project lists is missing, or the project is a Cranelift set whose
+generated files cannot be found or produced, semantic checks are skipped and an
+`incomplete-project` warning explains why. Checking without the generated files
+would report every CLIF term as unknown.
+
+Two more groups run alongside the semantic layer on a complete project:
+
+- **Unused declarations** (`unused`, hint, tagged Unnecessary): a `decl` that
+  nothing references.
+- **Rule lints**, all heuristics and all labelled `heuristic:` in the message.
+  They look at `simplify` rules by comparing pattern shapes, not by running
+  them, so they can be wrong in both directions:
+  - `not-cheaper`: the right-hand side has as many operations as the
+    left-hand side, or more. Constants (`iconst...`) cost nothing.
+  - `no-op-rewrite`: the right-hand side is the left-hand side.
+  - `shadowed-by-priority`: a rule with a higher priority and no `if-let`
+    clauses matches everything this rule matches. Related location: that rule.
+  - `rewrite-loop`: the result of a rule matches its own left-hand side, or the
+    left-hand side of a rule whose result matches this one. Related location:
+    the other rule.
+  - `missing-commutative-twin`: a rule on a commutative operation with one
+    constant operand and no rule for the operands in the other order. A quick
+    fix adds the flipped rule right after it, one priority higher so that it
+    does not overlap, and renames a named rule to `<name>_flipped`.
+
+  Disable any of them for a project in `isle-lsp.toml`:
+
+  ```toml
+  [lints]
+  disable = ["not-cheaper", "rewrite-loop"]
+  ```
 
 ## Navigation
 

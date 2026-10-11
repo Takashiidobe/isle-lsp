@@ -1,0 +1,13 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/lint-not-cheaper/main.isle 9:0..9:46 warning[not-cheaper] heuristic: the right-hand side is not cheaper than the left-hand side (2 operations against 1)
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl isub (Value Value) Value)
+(extern extractor infallible isub isub_extract)
+(extern constructor isub isub_ctor)
+(decl iadd (Value Value) Value)
+(extern constructor iadd iadd_ctor)
+(decl ineg (Value) Value)
+(extern constructor ineg ineg_ctor)
+(rule (simplify (isub x y)) (iadd x (ineg y)))

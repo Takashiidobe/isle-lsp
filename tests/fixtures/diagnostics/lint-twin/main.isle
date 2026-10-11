@@ -1,0 +1,14 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/lint-twin/main.isle 6:0..6:48 warning[missing-commutative-twin] heuristic: no rule matches `iadd` with its operands in the other order
+; nextln: fix Add the flipped rule 6:48..6:48 => "\n(rule add_zero_flipped 1 (simplify (iadd (iconst 0) x)) x)"
+; nextln: diagnostics/lint-twin/main.isle 7:0..7:39 warning[missing-commutative-twin] heuristic: no rule matches `iadd` with its operands in the other order
+; nextln: fix Add the flipped rule 7:39..7:39 => "\n(rule 1 (simplify (iadd (iconst 1) x)) x)"
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl iadd (Value Value) Value)
+(extern extractor infallible iadd iadd_extract)
+(decl iconst (u64) Value)
+(extern extractor infallible iconst iconst_extract)
+(rule add_zero (simplify (iadd x (iconst 0))) x)
+(rule (simplify (iadd x (iconst 1))) x)

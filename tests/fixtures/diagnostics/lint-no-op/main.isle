@@ -1,0 +1,9 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/lint-no-op/main.isle 5:0..5:39 warning[no-op-rewrite] heuristic: this rule rewrites an expression to itself
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl isub (Value Value) Value)
+(extern extractor infallible isub isub_extract)
+(extern constructor isub isub_ctor)
+(rule (simplify (isub x y)) (isub x y))

@@ -15,6 +15,14 @@ const CRANELIFT_VERSION: &str = "0.136.2";
 struct Config {
     #[serde(default)]
     set: Vec<SetConfig>,
+    #[serde(default)]
+    lints: LintConfig,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct LintConfig {
+    #[serde(default)]
+    disable: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -39,6 +47,7 @@ pub struct Project {
     pub files: Vec<PathBuf>,
     pub notes: Vec<String>,
     pub incomplete: bool,
+    pub disabled_lints: Vec<String>,
 }
 
 pub struct Source {
@@ -69,6 +78,27 @@ impl Project {
 }
 
 pub fn discover(file: &Path, boundary: Option<&Path>) -> Project {
+    let mut project = find(file, boundary);
+    project.disabled_lints = disabled_lints(&normalize(file), boundary);
+    project
+}
+
+fn disabled_lints(file: &Path, boundary: Option<&Path>) -> Vec<String> {
+    let dir = file.parent().unwrap_or(Path::new(""));
+    for ancestor in dir.ancestors() {
+        if boundary.is_some_and(|b| !ancestor.starts_with(b)) {
+            break;
+        }
+        let config = ancestor.join(CONFIG_NAME);
+        if config.is_file() {
+            let parsed = fs::read_to_string(config).ok().and_then(|text| toml::from_str::<Config>(&text).ok());
+            return parsed.map(|config| config.lints.disable).unwrap_or_default();
+        }
+    }
+    Vec::new()
+}
+
+fn find(file: &Path, boundary: Option<&Path>) -> Project {
     let file = normalize(file);
     let mut notes = Vec::new();
     let dir = file.parent().unwrap_or(Path::new("")).to_owned();
@@ -84,7 +114,7 @@ pub fn discover(file: &Path, boundary: Option<&Path>) -> Project {
             Ok(Some(project)) => return project,
             Ok(None) => {
                 notes.push(format!("{CONFIG_NAME} does not list this file"));
-                return Project { origin: Origin::Single, name: None, files: vec![file], notes, incomplete: false };
+                return Project { origin: Origin::Single, name: None, files: vec![file], notes, incomplete: false, disabled_lints: Vec::new() };
             }
             Err(note) => notes.push(note),
         }
@@ -109,6 +139,7 @@ fn from_config(config: &Path, file: &Path) -> Result<Option<Project>, String> {
                 files,
                 notes: Vec::new(),
                 incomplete: false,
+                disabled_lints: Vec::new(),
             }));
         }
     }
@@ -156,7 +187,7 @@ fn siblings(file: &Path) -> Project {
     }
     files.sort();
     let origin = if files.len() == 1 { Origin::Single } else { Origin::Siblings };
-    Project { origin, name: None, files, notes: Vec::new(), incomplete: false }
+    Project { origin, name: None, files, notes: Vec::new(), incomplete: false, disabled_lints: Vec::new() }
 }
 
 fn cranelift_opt(file: &Path, boundary: Option<&Path>) -> Option<Project> {
@@ -214,7 +245,7 @@ fn with_generated(
     if !files.iter().any(|f| f == file) {
         files.push(file.to_owned());
     }
-    Project { origin, name: Some(name), files, notes, incomplete }
+    Project { origin, name: Some(name), files, notes, incomplete, disabled_lints: Vec::new() }
 }
 
 pub fn bundled_dir() -> PathBuf {
