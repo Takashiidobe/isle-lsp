@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "isle_lsp",
+  "project_id": "81924997-3f37-4f60-a30f-f7a9840dda1c"
+}
