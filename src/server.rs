@@ -5,12 +5,14 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tower_lsp_server::jsonrpc::Result;
 use tower_lsp_server::ls_types::{
-    Diagnostic, DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
+    CodeActionOrCommand, CodeActionParams, CodeActionProviderCapability, CodeActionResponse, Diagnostic,
+    DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
     InitializeParams, InitializeResult, ServerCapabilities, ServerInfo, TextDocumentSyncCapability,
     TextDocumentSyncKind, Uri,
 };
 use tower_lsp_server::{Client, ClientSocket, LanguageServer, LspService};
 
+use crate::actions;
 use crate::diagnostics;
 use crate::document::Document;
 use crate::project::{self, Project};
@@ -71,6 +73,7 @@ impl LanguageServer for Backend {
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::INCREMENTAL)),
+                code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
                 ..ServerCapabilities::default()
             },
             server_info: Some(ServerInfo { name: "isle-lsp".into(), version: Some(env!("CARGO_PKG_VERSION").into()) }),
@@ -80,6 +83,11 @@ impl LanguageServer for Backend {
 
     async fn shutdown(&self) -> Result<()> {
         Ok(())
+    }
+
+    async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
+        let actions = actions::quick_fixes(&params.text_document.uri, &params.context.diagnostics);
+        Ok(Some(actions.into_iter().map(CodeActionOrCommand::CodeAction).collect()))
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {

@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use tower_lsp_server::ls_types::{DiagnosticSeverity, NumberOrString, Position, Range};
+use tower_lsp_server::ls_types::{DiagnosticSeverity, NumberOrString, Position, Range, Uri};
 
+use crate::actions;
 use crate::diagnostics;
 use crate::document::Document;
 use crate::lexer::{self, TokenKind};
@@ -79,6 +80,18 @@ fn render_diagnostics(input: &Input) -> String {
                 range(&file.path, diagnostic.range),
                 diagnostic.message.replace(&root_prefix, "")
             ));
+            if let Some(uri) = Uri::from_file_path(&file.path) {
+                for action in actions::quick_fixes(&uri, std::slice::from_ref(diagnostic)) {
+                    for edit in action.edit.iter().filter_map(|edit| edit.changes.as_ref()).flat_map(|c| c.values().flatten()) {
+                        out.push_str(&format!(
+                            "  fix {} {} => {:?}\n",
+                            action.title,
+                            range(&file.path, edit.range),
+                            edit.new_text
+                        ));
+                    }
+                }
+            }
             for related in diagnostic.related_information.iter().flatten() {
                 let path = related.location.uri.to_file_path().map(|p| p.into_owned()).unwrap_or_default();
                 out.push_str(&format!(

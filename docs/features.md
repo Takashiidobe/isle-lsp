@@ -26,9 +26,11 @@ clean:
      right-hand side.
    - `type`: unknown types and terms, wrong argument counts, type mismatches,
      terms used on the wrong side of a rule.
-   - `overlap`: two rules that match the same input at the same priority. The
-     diagnostic covers the whole rule, and the other rules are attached as
-     related locations, including rules in other files.
+   - `overlap`: two rules that match the same input at the same priority. Every
+     rule involved gets a diagnostic covering the whole rule, with the other
+     rules attached as related locations, including rules in other files. The
+     message names a priority that would resolve it, and a quick fix inserts or
+     raises the priority of that rule.
    - `shadowed` and `unreachable`: a rule that can never match.
    - `recursion`: a term that recurses without the `rec` attribute.
 

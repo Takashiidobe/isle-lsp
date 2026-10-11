@@ -11,7 +11,7 @@ use tower_lsp_server::ls_types::{
 
 use crate::document::position_in;
 use crate::project::{Loaded, Project, Source};
-use crate::syntax::{Node, Span};
+use crate::syntax::{AtomKind, Node, Span};
 
 const SOURCE: &str = "isle-lsp";
 
@@ -113,9 +113,27 @@ fn place(loaded: &Loaded, found: &mut [Vec<Diagnostic>], error: Error) {
         Error::TypeError { msg, span } => ("type", msg, span, Vec::new(), ""),
         Error::UnreachableError { msg, span } => ("unreachable", msg, span, Vec::new(), ""),
         Error::RecursionError { msg, span } => ("recursion", msg, span, Vec::new(), ""),
-        Error::OverlapError { msg, rules } => {
-            let (first, rest) = rules.split_first().expect("overlap errors name at least one rule");
-            ("overlap", msg, first.clone(), rest.to_vec(), "overlaps with this rule")
+        Error::OverlapError { rules, .. } => {
+            for (idx, rule) in rules.iter().enumerate() {
+                let others: Vec<IsleSpan> =
+                    rules.iter().enumerate().filter(|(other, _)| *other != idx).map(|(_, span)| span.clone()).collect();
+                let fix = loaded.sources.get(rule.from.file).and_then(|source| priority_fix(source, rule));
+                let message = match &fix {
+                    Some(fix) => format!(
+                        "rules are overlapping: give one of them a higher priority, for example `(rule {} ...)`",
+                        fix.priority
+                    ),
+                    None => "rules are overlapping: give one of them a higher priority".to_owned(),
+                };
+                let before = found[rule.from.file].len();
+                push_isle(loaded, found, "overlap", message, rule.clone(), &others, "overlaps with this rule");
+                if let (Some(fix), Some(diag)) = (fix, found[rule.from.file].get_mut(before)) {
+                    diag.data = Some(serde_json::json!({
+                        "fixes": [{ "title": format!("Give this rule priority {}", fix.priority), "range": fix.range, "newText": fix.new_text }]
+                    }));
+                }
+            }
+            return;
         }
         Error::ShadowedError { shadowed, mask } => {
             for span in shadowed {
@@ -163,6 +181,32 @@ fn push_isle(
         diag.related_information = Some(related);
     }
     found[primary.from.file].push(diag);
+}
+
+struct PriorityFix {
+    priority: i64,
+    range: Range,
+    new_text: String,
+}
+
+fn priority_fix(source: &Source, rule: &IsleSpan) -> Option<PriorityFix> {
+    let form = enclosing_form(source, Span { start: rule.from.offset, end: rule.to.offset });
+    let Node::List(list) = source.file.items.iter().find(|node| node.span() == form)? else { return None };
+    let head = list.head()?;
+    if head.span.text(&source.text) != "rule" {
+        return None;
+    }
+    match list.items.get(1) {
+        Some(Node::Atom(atom)) if atom.kind == AtomKind::Int => {
+            let current: i64 = atom.span.text(&source.text).replace('_', "").parse().ok()?;
+            let priority = current + 1;
+            Some(PriorityFix { priority, range: range_of(source, atom.span), new_text: priority.to_string() })
+        }
+        _ => {
+            let at = Span { start: head.span.end, end: head.span.end };
+            Some(PriorityFix { priority: 1, range: range_of(source, at), new_text: " 1".to_owned() })
+        }
+    }
 }
 
 fn enclosing_form(source: &Source, span: Span) -> Span {
