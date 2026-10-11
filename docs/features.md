@@ -148,6 +148,10 @@ when a document opens. It looks in this order:
    every file in `opts/`, and the generated `numerics.isle` and `clif_opt.isle`
    from the newest `cranelift-codegen` build output under an enclosing
    `target/`. Without a build, the generated files are left out.
+   The lowering layout works the same way for a document in `src/isa/<arch>/`
+   next to `prelude.isle` and `prelude_lower.isle`: the project is the two
+   preludes, the architecture's `.isle` files (`inst*` first), and the
+   generated `numerics.isle` and `clif_lower.isle`.
 3. **Siblings**: every `.isle` file in the document's directory.
 
 Open buffers replace the files on disk, so unsaved edits in one file are visible

@@ -309,6 +309,7 @@ fn render_project(input: &Input) -> String {
     let origin = match &project.origin {
         project::Origin::Config(path) => format!("config {}", relative(path)),
         project::Origin::CraneliftOpt => "cranelift-opt".to_owned(),
+        project::Origin::CraneliftLower => "cranelift-lower".to_owned(),
         project::Origin::Siblings => "siblings".to_owned(),
         project::Origin::Single => "single".to_owned(),
     };

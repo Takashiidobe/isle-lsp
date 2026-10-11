@@ -1,0 +1,18 @@
+; mode: project
+; check: === project ===
+; nextln: origin: cranelift-lower
+; nextln: set: lower x64
+; nextln: files:
+; nextln: project/cranelift/src/prelude.isle
+; nextln: project/cranelift/src/prelude_lower.isle
+; nextln: project/cranelift/src/isa/x64/inst.isle
+; nextln: project/cranelift/src/isa/x64/lower.isle
+; nextln: project/cranelift/target/debug/build/cranelift-codegen/abc123/out/numerics.isle
+; nextln: project/cranelift/target/debug/build/cranelift-codegen/abc123/out/clif_lower.isle
+; nextln: decls:
+; nextln: emit (project/cranelift/src/prelude_lower.isle:1)
+; nextln: x64_add (project/cranelift/src/isa/x64/inst.isle:1)
+; nextln: lower (project/cranelift/src/isa/x64/lower.isle:1)
+; nextln: u64_add (project/cranelift/target/debug/build/cranelift-codegen/abc123/out/numerics.isle:1)
+; nextln: iadd (project/cranelift/target/debug/build/cranelift-codegen/abc123/out/clif_lower.isle:1)
+(decl lower (Value) Value)

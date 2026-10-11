@@ -25,6 +25,7 @@ struct SetConfig {
 pub enum Origin {
     Config(PathBuf),
     CraneliftOpt,
+    CraneliftLower,
     Siblings,
     Single,
 }
@@ -87,7 +88,7 @@ pub fn discover(file: &Path, boundary: Option<&Path>) -> Project {
         }
         break;
     }
-    let mut project = cranelift_opt(&file, boundary).unwrap_or_else(|| siblings(&file));
+    let mut project = cranelift_opt(&file, boundary).or_else(|| cranelift_lower(&file, boundary)).unwrap_or_else(|| siblings(&file));
     notes.append(&mut project.notes);
     project.notes = notes;
     project
@@ -167,29 +168,60 @@ fn cranelift_opt(file: &Path, boundary: Option<&Path>) -> Option<Project> {
     rules.sort();
     let mut files = preludes.to_vec();
     files.extend(rules);
+    Some(with_generated(Origin::CraneliftOpt, "opt".to_owned(), files, file, src, "clif_opt.isle", boundary))
+}
+
+fn cranelift_lower(file: &Path, boundary: Option<&Path>) -> Option<Project> {
+    let arch_dir = file.parent()?;
+    let isa_dir = arch_dir.parent().filter(|d| d.file_name().is_some_and(|n| n == "isa"))?;
+    let src = isa_dir.parent()?;
+    let preludes = [src.join("prelude.isle"), src.join("prelude_lower.isle")];
+    if !preludes.iter().all(|p| p.is_file()) {
+        return None;
+    }
+    let mut isa = list_dir(arch_dir, is_isle);
+    isa.sort_by_key(|path| {
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        (!name.starts_with("inst"), name.to_owned())
+    });
+    let mut files = preludes.to_vec();
+    files.extend(isa);
+    let arch = arch_dir.file_name()?.to_string_lossy();
+    Some(with_generated(Origin::CraneliftLower, format!("lower {arch}"), files, file, src, "clif_lower.isle", boundary))
+}
+
+fn with_generated(
+    origin: Origin,
+    name: String,
+    mut files: Vec<PathBuf>,
+    file: &Path,
+    src: &Path,
+    clif: &str,
+    boundary: Option<&Path>,
+) -> Project {
     let mut notes = Vec::new();
-    let generated = src.parent().and_then(|crate_dir| generated_isle(crate_dir, boundary));
+    let generated = src.parent().and_then(|crate_dir| generated_isle(crate_dir, clif, boundary));
     let incomplete = generated.is_none();
     match generated {
         Some(generated) => files.extend(generated),
-        None => notes.push("generated numerics.isle and clif_opt.isle not found, build cranelift-codegen or list them in isle-lsp.toml".to_owned()),
+        None => notes.push(format!("generated numerics.isle and {clif} not found, build cranelift-codegen or list them in isle-lsp.toml")),
     }
     if !files.iter().any(|f| f == file) {
         files.push(file.to_owned());
     }
-    Some(Project { origin: Origin::CraneliftOpt, name: Some("opt".to_owned()), files, notes, incomplete })
+    Project { origin, name: Some(name), files, notes, incomplete }
 }
 
-fn generated_isle(crate_dir: &Path, boundary: Option<&Path>) -> Option<Vec<PathBuf>> {
+fn generated_isle(crate_dir: &Path, clif: &str, boundary: Option<&Path>) -> Option<Vec<PathBuf>> {
     let mut newest: Option<(SystemTime, PathBuf)> = None;
     for ancestor in crate_dir.ancestors().take_while(|a| boundary.is_none_or(|b| a.starts_with(b))) {
         for profile in list_dir(&ancestor.join("target"), |_| true) {
             let mut stack = vec![(profile.join("build"), 0)];
             while let Some((dir, depth)) = stack.pop() {
                 let out = dir.join("out");
-                let clif_opt = out.join("clif_opt.isle");
-                if out.join("numerics.isle").is_file() && clif_opt.is_file() {
-                    let modified = fs::metadata(&clif_opt).and_then(|m| m.modified()).unwrap_or(SystemTime::UNIX_EPOCH);
+                let clif_path = out.join(clif);
+                if out.join("numerics.isle").is_file() && clif_path.is_file() {
+                    let modified = fs::metadata(&clif_path).and_then(|m| m.modified()).unwrap_or(SystemTime::UNIX_EPOCH);
                     if newest.as_ref().is_none_or(|(t, _)| modified > *t) {
                         newest = Some((modified, out));
                     }
@@ -202,7 +234,7 @@ fn generated_isle(crate_dir: &Path, boundary: Option<&Path>) -> Option<Vec<PathB
         }
     }
     let (_, out) = newest?;
-    Some(vec![out.join("numerics.isle"), out.join("clif_opt.isle")])
+    Some(vec![out.join("numerics.isle"), out.join(clif)])
 }
 
 pub fn normalize(path: &Path) -> PathBuf {
