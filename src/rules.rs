@@ -104,6 +104,7 @@ pub fn shape(text: &str, node: &Node) -> Shape {
             match name {
                 "and" => Shape::And(args),
                 "let" => Shape::Other,
+                "subsume" if args.len() == 1 => args.into_iter().next().unwrap_or(Shape::Other),
                 _ => Shape::Call(name.to_owned(), args),
             }
         }

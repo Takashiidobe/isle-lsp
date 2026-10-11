@@ -46,24 +46,28 @@ Two more groups run alongside the semantic layer on a complete project:
 - **Rule lints**, all heuristics and all labelled `heuristic:` in the message.
   They look at `simplify` rules by comparing pattern shapes, not by running
   them, so they can be wrong in both directions:
-  - `not-cheaper`: the right-hand side has as many operations as the
-    left-hand side, or more. Constants (`iconst...`) cost nothing.
+  - `costlier-rhs`: the right-hand side has more operations than the
+    left-hand side. Constants (`iconst...`) and `subsume` cost nothing.
   - `no-op-rewrite`: the right-hand side is the left-hand side.
   - `shadowed-by-priority`: a rule with a higher priority and no `if-let`
     clauses matches everything this rule matches. Related location: that rule.
-  - `rewrite-loop`: the result of a rule matches its own left-hand side, or the
-    left-hand side of a rule whose result matches this one. Related location:
-    the other rule.
+  - `rewrite-loop`: the result of a rule is matched by its own left-hand side,
+    or by the left-hand side of a rule whose result this rule matches in turn.
+    Rules with `if-let` clauses are skipped. Related location: the other rule.
   - `missing-commutative-twin`: a rule on a commutative operation with one
     constant operand and no rule for the operands in the other order. A quick
     fix adds the flipped rule right after it, one priority higher so that it
     does not overlap, and renames a named rule to `<name>_flipped`.
 
+  Cranelift's own mid-end moves constants to the right before `simplify` runs,
+  so it deliberately has no twin rules and `missing-commutative-twin` fires on
+  its rules (about a dozen in `src/opts`). Disable it there.
+
   Disable any of them for a project in `isle-lsp.toml`:
 
   ```toml
   [lints]
-  disable = ["not-cheaper", "rewrite-loop"]
+  disable = ["costlier-rhs", "missing-commutative-twin"]
   ```
 
 ## Navigation

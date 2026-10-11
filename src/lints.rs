@@ -2,7 +2,7 @@ use crate::project::Loaded;
 use crate::rules::{self, Rule, Shape};
 use crate::syntax::{Node, Span};
 
-pub const NOT_CHEAPER: &str = "not-cheaper";
+pub const COSTLIER_RHS: &str = "costlier-rhs";
 pub const NO_OP: &str = "no-op-rewrite";
 pub const SHADOWED: &str = "shadowed-by-priority";
 pub const LOOP: &str = "rewrite-loop";
@@ -81,9 +81,9 @@ fn no_op_and_cost(infos: &[Info], found: &mut Vec<Lint>) {
             continue;
         }
         let (left, right) = (rules::cost(lhs), rules::cost(&info.rhs));
-        if right >= left {
-            let message = format!("heuristic: the right-hand side is not cheaper than the left-hand side ({right} operations against {left})");
-            found.push(lint(info, NOT_CHEAPER, message));
+        if right > left {
+            let message = format!("heuristic: the right-hand side has more operations than the left-hand side ({right} against {left})");
+            found.push(lint(info, COSTLIER_RHS, message));
         }
     }
 }
@@ -113,7 +113,10 @@ fn shadowed(infos: &[Info], found: &mut Vec<Lint>) {
 fn loops(infos: &[Info], found: &mut Vec<Lint>) {
     let leads_to = |from: usize, to: usize| {
         let (Some(lhs), Shape::Call(..)) = (&infos[to].lhs, &infos[from].rhs) else { return false };
-        if !rules::overlaps(&infos[from].rhs, lhs) {
+        if !infos[from].rule.clauses.is_empty() || !infos[to].rule.clauses.is_empty() {
+            return false;
+        }
+        if !rules::subsumes(lhs, &infos[from].rhs) {
             return false;
         }
         from != to
