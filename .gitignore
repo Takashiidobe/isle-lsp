@@ -1,5 +1,10 @@
 /target
 
+# Demo recordings
+/docs/demos/out/
+/docs/demos/node_modules/
+/docs/demos/package-lock.json
+
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db

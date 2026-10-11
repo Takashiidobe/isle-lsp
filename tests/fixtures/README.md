@@ -54,8 +54,14 @@ Modes live in `src/modes.rs`.
   `range type modifiers text`), `inlay` (every hint in the file as `path L:C : Type`), `hover` (range then the markdown, each line prefixed with `|`), `complete`
   (one `label Kind detail` line per item), `signature` (label, parameters and
   active index), `prepare` (prepare-rename range) and `rename <new name>`, which lists
-  `range => "text"` edits or `error: message`. Each fixture lives in its own
-  directory.
+  `range => "text"` edits or `error: message`. `view <name> [term]` renders an
+  `isle/view` view (`trie`, `rust` or `graph`) for the term under the cursor or
+  the given one and prints every section: text and tree lines, tables as
+  ` | `-separated rows, and `(html page)` for a page. `page <name> [term]` is
+  the same but prints the HTML lines, for checking markup. The views compile
+  the project from disk, so line numbers in them are lines of the file
+  including directive lines; put the directives at the end of the fixture to
+  keep them equal to the source lines. Each fixture lives in its own directory.
 - `source`: the text with directives and queries removed.
 
 Every fixture also runs through the invariants in `tests/harness/invariants.rs`:

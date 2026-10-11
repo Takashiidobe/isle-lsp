@@ -13,6 +13,36 @@ for pattern types, symbols, folding, semantic tokens and quick fixes. The full
 list is in [docs/features.md](docs/features.md). Remaining work is tracked as
 issues in `.beads/`.
 
+## HTML views
+
+Three views render what `cranelift-isle` builds for your rules as standalone
+pages, through the `isle/view` request
+([details](docs/features.md#html-views), [Neovim commands](docs/neovim.md)).
+
+### Decision trie
+
+Shows the tests the generated matcher runs for a term, in order, and which rule
+each leaf returns.
+
+![Decision trie](docs/images/trie.gif)
+
+### Generated Rust
+
+Shows the function `cranelift-isle` generates for a term, with each rule's result
+marked.
+
+![Generated Rust](docs/images/rust.gif)
+
+### Term graph
+
+Draws which terms construct which, tints terms in a call cycle and lists the
+overlapping rules of one term.
+
+![Term graph](docs/images/graph.gif)
+
+The recordings are rendered by `docs/demos/render.sh <trie|rust|graph>` from the
+examples in `docs/demos/isle`.
+
 ## Install
 
 You need a Rust toolchain (1.96 or later, which `cranelift-isle` requires). From

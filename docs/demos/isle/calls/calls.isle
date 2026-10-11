@@ -1,0 +1,31 @@
+(decl pipeline (u32) u32)
+(decl simplify (u32) u32)
+(decl fold (u32) u32)
+(decl canon (u32) u32)
+(decl cost (u32) u32)
+
+(decl rec normalize (u32) u32)
+(decl rec is_even (u32) bool)
+(decl rec is_odd (u32) bool)
+
+(decl shrink (u32) u32)
+(extern constructor shrink shrink)
+(decl dec (u32) u32)
+(extern constructor dec dec)
+(decl pick (u32 u32) u32)
+(extern constructor pick pick)
+
+(rule (pipeline x) (pick (simplify x) (cost x)))
+(rule (simplify x) (fold (canon x)))
+(rule (fold x) (shrink x))
+(rule (cost x) (fold x))
+(rule 1 (canon 0) 0)
+(rule (canon x) (normalize x))
+
+(rule 1 (normalize 0) 0)
+(rule (normalize x) (normalize (shrink x)))
+
+(rule 1 (is_even 0) true)
+(rule (is_even n) (is_odd (dec n)))
+(rule 1 (is_odd 0) false)
+(rule (is_odd n) (is_even (dec n)))

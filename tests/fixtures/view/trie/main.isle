@@ -1,0 +1,45 @@
+(type Op (enum (Add (a u32) (b u32)) (Neg (a u32)) (Zero)))
+(decl lower (Op) u32)
+(decl emit_add (u32 u32) u32)
+(extern constructor emit_add emit_add)
+(decl emit_neg (u32) u32)
+(extern constructor emit_neg emit_neg)
+(rule add_zero 1 (lower (Op.Add x 0)) x)
+(rule (lower (Op.Add x y)) (emit_add x y))
+(rule (lower (Op.Neg x)) (emit_neg x))
+(rule (lower (Op.Zero)) 0)
+(rule add_self 2 (lower (Op.Add x x)) (emit_add x x))
+;  ^ view trie lower
+;  ^ view trie emit_add
+;  ^ view bogus lower
+; mode: navigate
+; check: === navigate ===
+; check: view 10:3 trie lower
+; nextln: title: Decision trie of lower
+; nextln: == Trie ==
+; nextln: match v0
+; nextln: Op.Add binds v1, v2
+; nextln: v1 == v2
+; nextln: v7 = emit_add(v1, v1)
+; nextln: return v7 = emit_add(v1, v1) [add_self, priority 2, view/trie/main.isle line 10]
+; nextln: match v2
+; nextln: 0
+; nextln: return v1 = v0.0 [add_zero, priority 1, view/trie/main.isle line 6]
+; nextln: v3 = emit_add(v1, v2)
+; nextln: return v3 = emit_add(v1, v2) [priority 0, view/trie/main.isle line 7]
+; nextln: Op.Neg binds v4
+; nextln: v5 = emit_neg(v4)
+; nextln: return v5 = emit_neg(v4) [priority 0, view/trie/main.isle line 8]
+; nextln: Op.Zero
+; nextln: return v6 = 0 [priority 0, view/trie/main.isle line 9]
+; nextln: == Trie page ==
+; nextln: (html page)
+; nextln: == Rules in evaluation order ==
+; nextln: # | rule | priority | location
+; nextln: 1 | add_self | 2 | view/trie/main.isle line 10
+; nextln: 2 | add_zero | 1 | view/trie/main.isle line 6
+; nextln: 3 | - | 0 | view/trie/main.isle line 7
+; check: view 10:3 trie emit_add
+; nextln: error: `emit_add` has no rules in this project
+; check: view 10:3 bogus lower
+; nextln: error: unknown view `bogus`, expected one of: trie, rust, graph

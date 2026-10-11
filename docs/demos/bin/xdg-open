@@ -1,0 +1,3 @@
+#!/bin/sh
+mkdir -p "$DEMO_OUT"
+cp -f "$1" "$DEMO_OUT/$DEMO_NAME.html"

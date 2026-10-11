@@ -1,0 +1,31 @@
+(type Op (enum (Add (a u32) (b u32)) (Zero)))
+(decl lower (Op) u32)
+(decl emit_add (u32 u32) u32)
+(extern constructor emit_add emit_add)
+(rule add_zero 1 (lower (Op.Add x 0)) x)
+(rule (lower (Op.Add x y)) (emit_add x y))
+(rule (lower (Op.Zero)) 0)
+;  ^ page trie lower
+;  ^ page graph
+;  ^ page rust lower
+; mode: navigate
+; check: === navigate ===
+; check: page 6:3 trie lower
+; check: <!doctype html>
+; check: <title>Decision trie of lower</title>
+; check: prefers-color-scheme: dark
+; check: <summary class="n match">match v0</summary>
+; check: <summary class="n arm">Op.Add binds v1, v2</summary>
+; check: <div class="n leaf">return v1 = v0.0 [add_zero, priority 1, view/page/main.isle line 4]</div>
+; check: <script>
+; check: </html>
+; check: page 6:3 graph
+; check: <title>Term graph</title>
+; check: <svg
+; check: <div class="term" style=
+; check: <b>lower</b>3 rules
+; check: page 6:3 rust lower
+; check: <title>Generated Rust for lower</title>
+; check: <div class="rule">
+; not: http://
+; check: </html>

@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "description": "Dev-only tooling for rendering the README demos",
+  "dependencies": {
+    "playwright-core": "1.49.1"
+  }
+}

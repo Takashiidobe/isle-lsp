@@ -1,0 +1,36 @@
+(type Inst
+  (enum (Add (a u32) (b u32))
+        (Sub (a u32) (b u32))
+        (Mul (a u32) (b u32))
+        (Neg (a u32))
+        (Not (a u32))))
+
+(decl lower (Inst) u32)
+
+(decl emit_add (u32 u32) u32)
+(extern constructor emit_add emit_add)
+(decl emit_sub (u32 u32) u32)
+(extern constructor emit_sub emit_sub)
+(decl emit_mul (u32 u32) u32)
+(extern constructor emit_mul emit_mul)
+(decl emit_shl (u32 u32) u32)
+(extern constructor emit_shl emit_shl)
+(decl emit_neg (u32) u32)
+(extern constructor emit_neg emit_neg)
+(decl emit_not (u32) u32)
+(extern constructor emit_not emit_not)
+
+(rule add_zero 3 (lower (Inst.Add x 0)) x)
+(rule zero_add 4(lower (Inst.Add 0 x)) x)
+(rule add_self 2 (lower (Inst.Add x x)) (emit_shl x 1))
+(rule (lower (Inst.Add x y)) (emit_add x y))
+
+(rule sub_self 1 (lower (Inst.Sub x x)) 0)
+(rule (lower (Inst.Sub x y)) (emit_sub x y))
+
+(rule mul_one 1 (lower (Inst.Mul x 1)) x)
+(rule mul_two 1 (lower (Inst.Mul x 2)) (emit_shl x 1))
+(rule (lower (Inst.Mul x y)) (emit_mul x y))
+
+(rule (lower (Inst.Neg x)) (emit_neg x))
+(rule (lower (Inst.Not x)) (emit_not x))

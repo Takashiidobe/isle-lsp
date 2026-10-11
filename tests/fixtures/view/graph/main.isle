@@ -1,0 +1,45 @@
+(decl a (u32) u32)
+(decl b (u32) u32)
+(decl rec c (u32) u32)
+(decl ext (u32) u32)
+(extern constructor ext ext)
+(rule (a x) (b x))
+(rule (b x) (c x))
+(rule (c x) (c (ext x)))
+(rule low 1 (c 0) 0)
+;  ^ view graph
+;  ^ view graph b
+;  ^ view graph c
+; mode: navigate
+; check: === navigate ===
+; check: view 8:3 graph
+; nextln: title: Term graph
+; nextln: == Terms ==
+; nextln: term | rules | calls | in a cycle
+; nextln: a | 1 | b | no
+; nextln: b | 1 | c | no
+; nextln: c | 2 | - | yes
+; nextln: == Graph page ==
+; nextln: (html page)
+; check: view 8:3 graph b
+; nextln: title: Term graph around b
+; nextln: == Terms ==
+; nextln: term | rules | calls | in a cycle
+; nextln: a | 1 | b | no
+; nextln: b | 1 | c | no
+; nextln: c | 2 | - | yes
+; nextln: == Graph page ==
+; nextln: (html page)
+; nextln: == Overlapping rules at different priorities ==
+; nextln: wins | priority | loses | priority | overlap
+; check: view 8:3 graph c
+; nextln: title: Term graph around c
+; nextln: == Terms ==
+; nextln: term | rules | calls | in a cycle
+; nextln: b | 1 | c | no
+; nextln: c | 2 | - | yes
+; nextln: == Graph page ==
+; nextln: (html page)
+; nextln: == Overlapping rules at different priorities ==
+; nextln: wins | priority | loses | priority | overlap
+; nextln: low (view/graph/main.isle line 8) | 1 | view/graph/main.isle line 7 | 0 | one matches a subset of the other

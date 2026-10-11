@@ -19,6 +19,7 @@ use crate::rules;
 use crate::semantic;
 use crate::symbols;
 use crate::syntax::{self, AtomKind, FormKind, Node, Span};
+use crate::view;
 
 pub struct Query {
     pub line: usize,
@@ -299,6 +300,18 @@ fn render_navigate(input: &Input) -> String {
                     .unwrap_or_default();
                 ranked_rules(input, &loaded, &ranked, &mut out);
             }
+            "view" | "page" => {
+                let (name, explicit) = query.args.split_once(char::is_whitespace).unwrap_or((query.args.as_str(), ""));
+                let under_cursor = index
+                    .resolve(file, offset)
+                    .filter(|&id| index.defs[id].kind == index::DefKind::Term)
+                    .map(|id| index.defs[id].name.clone());
+                let term = Some(explicit.trim().to_owned()).filter(|t| !t.is_empty()).or(under_cursor);
+                match view::render(&loaded, |path| shown(input.root, path), name, term.as_deref()) {
+                    Ok(rendered) => flatten_view(&rendered, query.kind == "page", &mut out),
+                    Err(message) => out.push_str(&format!("  error: {message}\n")),
+                }
+            }
             "clif" => {
                 let ranked = rules::for_clif(&loaded, &index, &query.args.replace("\\n", "\n"));
                 ranked_rules(input, &loaded, &ranked, &mut out);
@@ -307,6 +320,37 @@ fn render_navigate(input: &Input) -> String {
         }
     }
     out
+}
+
+fn flatten_view(view: &view::View, page: bool, out: &mut String) {
+    fn tree(nodes: &[view::TreeNode], depth: usize, out: &mut String) {
+        for node in nodes {
+            out.push_str(&format!("  {}{}\n", "  ".repeat(depth), node.label));
+            tree(&node.children, depth + 1, out);
+        }
+    }
+    out.push_str(&format!("  title: {}\n", view.title));
+    for section in &view.sections {
+        match section {
+            view::Section::Text { title, text } => {
+                out.push_str(&format!("  == {title} ==\n"));
+                text.lines().for_each(|line| out.push_str(&format!("  | {line}\n")));
+            }
+            view::Section::Html { title, html } if page => {
+                out.push_str(&format!("  == {title} ==\n"));
+                html.lines().for_each(|line| out.push_str(&format!("  | {line}\n")));
+            }
+            view::Section::Html { title, .. } => out.push_str(&format!("  == {title} ==\n  (html page)\n")),
+            view::Section::Table { title, columns, rows } => {
+                out.push_str(&format!("  == {title} ==\n  {}\n", columns.join(" | ")));
+                rows.iter().for_each(|row| out.push_str(&format!("  {}\n", row.join(" | "))));
+            }
+            view::Section::Tree { title, nodes } => {
+                out.push_str(&format!("  == {title} ==\n"));
+                tree(nodes, 0, out);
+            }
+        }
+    }
 }
 
 fn ranked_rules(input: &Input, loaded: &project::Loaded, ranked: &[rules::Ranked], out: &mut String) {

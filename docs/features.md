@@ -179,6 +179,59 @@ their type, so they get no hint.
   position of the name, for clients that want to forward it to the request
   above.
 
+## HTML views
+
+**`isle/view`** returns a named view as a self-describing document, in the
+same shape as clif-lsp's `clif/view`. Params are `{ textDocument, view, term?,
+position? }`. `term` names the term to show. Without it, the term under
+`position` is used (a `decl`, a rule head, a call or a match). The result is
+`{ schema, view, term, title, sections }`. `schema` is 1 and changes only for
+incompatible changes, so clients must skip unknown fields and unknown section
+kinds. Section kinds:
+
+- `text`: `{ text }`, preformatted plain text.
+- `html`: `{ html }`, a standalone page with inline CSS and script and no
+  external requests. It follows the system light or dark theme. Save it to a
+  file and open it in a browser.
+- `table`: `{ columns, rows }`, rows of strings.
+- `tree`: `{ nodes }`, each node `{ label, children }`.
+
+Every view compiles the project with `cranelift-isle` 0.136.2, the way the
+Cranelift build does, so the views describe what the generator really emits. A
+project with errors has no view: the request fails with the compiler's error
+text, which is also how a rule that can never match is explained (the
+`shadowed` error names the rule that masks it).
+
+- **`trie`** (needs a term): the decision tree that `cranelift-isle` builds for
+  the term's rules. Each node is a value binding (`v3 = iadd_extract(v0)`, in
+  grey), a `match` on a binding with one arm per pattern (an enum variant, an
+  integer, `Some`), an equality test between two bindings (`v1 == v2`, for a
+  variable that appears twice), a loop over a multi-term, or the result of a
+  rule, labelled with the rule name, priority and location. Higher-priority
+  rules are tested first, which is why the order differs from the file order.
+  The page folds every node and has expand and collapse buttons. Other
+  sections: the same tree as `tree`, and a `table` of the rules in the order
+  they are reached.
+- **`rust`** (needs a term): the function `cranelift-isle` generates for the
+  term, extracted from the project's generated Rust. Each `// Rule at ...`
+  comment marks the result of the rule at that location and is highlighted on
+  the page. Sections: `text` with the code, the page, and a `table` of the
+  rules the function contains. Line numbers are those of `cranelift-isle`.
+- **`graph`** (term optional): the terms that have rules, with an edge from a
+  term to each term its rules construct. Terms in a call cycle, including
+  mutual recursion, are tinted and their cycle edges are dashed, and a `rec`
+  declaration is marked on the node. Terms without rules (external
+  constructors) are left out. With a term, the graph shows that term, every
+  term it reaches and its direct callers, and the `table` section adds the
+  rules of that term that overlap at different priorities (the lower-priority
+  rule is still reachable for some inputs), saying whether one pattern covers
+  the other or the overlap is partial. Sections: a `table` of terms with their
+  rule counts, the terms they call and whether they are in a cycle, the page,
+  and the overlap table.
+
+An unknown view, a term without rules, or a missing term where one is needed
+fails with an invalid-params error.
+
 ## Project files
 
 ISLE files only make sense together, so the server groups them into a project

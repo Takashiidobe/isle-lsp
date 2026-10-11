@@ -37,12 +37,23 @@ use crate::project::{self, Loaded, Project};
 use crate::semantic;
 use crate::symbols::{self, SymKind};
 use crate::syntax::Span;
+use crate::view;
 
 pub fn service() -> (LspService<Backend>, ClientSocket) {
     LspService::build(Backend::new)
         .custom_method("isle/rulesForTerm", Backend::rules_for_term)
         .custom_method("isle/rulesForClif", Backend::rules_for_clif)
+        .custom_method("isle/view", Backend::view)
         .finish()
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewParams {
+    text_document: TextDocumentIdentifier,
+    view: String,
+    term: Option<String>,
+    position: Option<Position>,
 }
 
 #[derive(Deserialize)]
@@ -79,6 +90,12 @@ fn ranked_rules(analysis: &Analysis, ranked: Vec<rules::Ranked>) -> Vec<RankedRu
             })
         })
         .collect()
+}
+
+fn common_dir(loaded: &Loaded) -> PathBuf {
+    let mut dirs = loaded.sources.iter().filter_map(|source| source.path.parent());
+    let Some(first) = dirs.next() else { return PathBuf::new() };
+    dirs.fold(first.to_path_buf(), |common, dir| common.ancestors().find(|a| dir.starts_with(a)).unwrap_or(&common).to_path_buf())
 }
 
 fn symbol_kind(kind: SymKind) -> SymbolKind {
@@ -162,6 +179,25 @@ impl Backend {
             .map(|id| rules::for_term(&analysis.loaded, &analysis.index.defs[id].name))
             .unwrap_or_default();
         Ok(ranked_rules(&analysis, ranked))
+    }
+
+    async fn view(&self, params: ViewParams) -> Result<view::View> {
+        let position = params.position.unwrap_or(Position::new(0, 0));
+        let analysis = self
+            .analyze(&params.text_document.uri, position)
+            .await
+            .ok_or_else(|| Error::invalid_params("the document is not open"))?;
+        let under_cursor = params.position.and_then(|_| {
+            analysis
+                .index
+                .resolve(analysis.file, analysis.offset)
+                .filter(|&id| analysis.index.defs[id].kind == DefKind::Term)
+                .map(|id| analysis.index.defs[id].name.clone())
+        });
+        let term = params.term.or(under_cursor);
+        let base = common_dir(&analysis.loaded);
+        let name = |path: &std::path::Path| path.strip_prefix(&base).unwrap_or(path).display().to_string();
+        view::render(&analysis.loaded, name, &params.view, term.as_deref()).map_err(Error::invalid_params)
     }
 
     async fn rules_for_clif(&self, params: RulesForClifParams) -> Result<Vec<RankedRule>> {

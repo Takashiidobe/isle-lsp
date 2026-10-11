@@ -1,0 +1,31 @@
+(type Op (enum (Add (a u32) (b u32)) (Zero)))
+(decl lower (Op) u32)
+(decl emit_add (u32 u32) u32)
+(extern constructor emit_add emit_add)
+(rule add_zero 1 (lower (Op.Add x 0)) x)
+(rule (lower (Op.Add x y)) (emit_add x y))
+(rule (lower (Op.Zero)) 0)
+;  ^ view rust lower
+;  ^ view rust emit_add
+; mode: navigate
+; check: === navigate ===
+; check: view 6:3 rust lower
+; nextln: title: Generated Rust for lower
+; nextln: == Rust ==
+; nextln: // Generated as internal constructor for term lower.
+; nextln: pub fn constructor_lower<C: Context>(
+; nextln: ctx: &mut C,
+; nextln: arg0: &Op,
+; nextln: ) -> u32 {
+; check: // Rule at view/rust/main.isle line 4.
+; check: // Rule at view/rust/main.isle line 5.
+; check: // Rule at view/rust/main.isle line 6.
+; check: == Rust page ==
+; nextln: (html page)
+; nextln: == Rules in the function ==
+; nextln: # | location
+; nextln: 1 | view/rust/main.isle line 4
+; nextln: 2 | view/rust/main.isle line 5
+; nextln: 3 | view/rust/main.isle line 6
+; check: view 6:3 rust emit_add
+; nextln: error: `emit_add` has no rules in this project
