@@ -1,8 +1,11 @@
+use std::path::{Path, PathBuf};
+
 use tower_lsp_server::ls_types::{Position, Range};
 
 use crate::document::Document;
 use crate::lexer::{self, TokenKind};
 use crate::parser;
+use crate::project;
 use crate::syntax::{self, AtomKind, FormKind, Node, Span};
 
 pub struct Query {
@@ -15,16 +18,75 @@ pub struct Query {
 pub struct Input<'a> {
     pub source: &'a str,
     pub queries: &'a [Query],
+    pub path: &'a Path,
+    pub root: &'a Path,
 }
 
 pub fn render(mode: &str, input: &Input) -> Result<String, String> {
     match mode {
+        "project" => Ok(render_project(input)),
         "document" => render_document(input),
         "tokens" => Ok(render_tokens(&plain_text(input.source))),
         "syntax-tree" => Ok(render_syntax_tree(&plain_text(input.source))),
         "source" => Ok(plain_text(input.source)),
         _ => Err(format!("unknown mode `{mode}`")),
     }
+}
+
+fn render_project(input: &Input) -> String {
+    let relative = |path: &Path| path.strip_prefix(input.root).unwrap_or(path).display().to_string();
+    let project = project::discover(input.path, Some(input.root));
+    let overrides: Vec<(PathBuf, String)> = input
+        .queries
+        .iter()
+        .filter(|q| q.kind == "open")
+        .map(|q| {
+            let (name, text) = q.args.split_once(' ').unwrap_or((q.args.as_str(), ""));
+            (project::normalize(&input.root.join(name)), text.replace("\\n", "\n"))
+        })
+        .collect();
+    let loaded = project.load(|path| overrides.iter().find(|(p, _)| p == path).map(|(_, text)| text.clone()));
+
+    let origin = match &project.origin {
+        project::Origin::Config(path) => format!("config {}", relative(path)),
+        project::Origin::CraneliftOpt => "cranelift-opt".to_owned(),
+        project::Origin::Siblings => "siblings".to_owned(),
+        project::Origin::Single => "single".to_owned(),
+    };
+    let mut out = format!("origin: {origin}\n");
+    if let Some(name) = &project.name {
+        out.push_str(&format!("set: {name}\n"));
+    }
+    out.push_str("files:\n");
+    for path in &project.files {
+        out.push_str(&format!("  {}\n", relative(path)));
+    }
+    for path in &loaded.missing {
+        out.push_str(&format!("missing: {}\n", relative(path)));
+    }
+    for note in &project.notes {
+        out.push_str(&format!("note: {note}\n"));
+    }
+    out.push_str("decls:\n");
+    for source in &loaded.sources {
+        for node in &source.file.items {
+            let Node::List(list) = node else { continue };
+            if syntax::form_kind(&source.text, list) != Some(FormKind::Decl) {
+                continue;
+            }
+            let name = list.items[1..].iter().find_map(|item| match item {
+                Node::Atom(atom) if atom.kind == AtomKind::Symbol => {
+                    Some(atom.span).filter(|s| !matches!(s.text(&source.text), "pure" | "multi" | "partial"))
+                }
+                _ => None,
+            });
+            if let Some(name) = name {
+                let line = source.text[..name.start].lines().filter(|l| !is_directive(l) && !is_caret(l)).count();
+                out.push_str(&format!("  {} ({}:{line})\n", name.text(&source.text), relative(&source.path)));
+            }
+        }
+    }
+    out
 }
 
 struct Positions {
@@ -38,8 +100,12 @@ impl Positions {
         Positions { line_starts }
     }
 
+    fn line(&self, byte: usize) -> usize {
+        self.line_starts.partition_point(|&s| s <= byte) - 1
+    }
+
     fn at(&self, byte: usize) -> String {
-        let line = self.line_starts.partition_point(|&s| s <= byte) - 1;
+        let line = self.line(byte);
         format!("{line}:{}", byte - self.line_starts[line])
     }
 

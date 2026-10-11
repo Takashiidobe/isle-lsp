@@ -1,0 +1,12 @@
+; mode: project
+; check: === project ===
+; nextln: origin: siblings
+; nextln: files:
+; nextln: project/override/extra.isle
+; nextln: project/override/main.isle
+; nextln: decls:
+; nextln: from_buffer (project/override/extra.isle:1)
+; nextln: second_from_buffer (project/override/extra.isle:2)
+; nextln: simplify (project/override/main.isle:1)
+(decl simplify (Value) Value)
+;^ open project/override/extra.isle (decl from_buffer (Value) Value)\n(decl second_from_buffer (Value) Value)

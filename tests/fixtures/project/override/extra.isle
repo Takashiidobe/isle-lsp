@@ -1,0 +1,1 @@
+(decl from_disk (Value) Value)

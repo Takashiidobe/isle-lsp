@@ -1,0 +1,1 @@
+(decl pure u64_add (u64 u64) u64)

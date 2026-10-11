@@ -1,0 +1,1 @@
+the wildcard rules/*.isle must not match this file

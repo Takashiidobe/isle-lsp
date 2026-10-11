@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
@@ -10,6 +11,7 @@ use tower_lsp_server::ls_types::{
 use tower_lsp_server::{Client, ClientSocket, LanguageServer, LspService};
 
 use crate::document::Document;
+use crate::project::{self, Loaded, Project};
 
 pub fn service() -> (LspService<Backend>, ClientSocket) {
     LspService::build(Backend::new).finish()
@@ -18,11 +20,23 @@ pub fn service() -> (LspService<Backend>, ClientSocket) {
 pub struct Backend {
     client: Client,
     documents: Arc<RwLock<HashMap<Uri, Document>>>,
+    projects: Arc<RwLock<HashMap<Uri, Project>>>,
 }
 
 impl Backend {
     pub fn new(client: Client) -> Self {
-        Self { client, documents: Arc::default() }
+        Self { client, documents: Arc::default(), projects: Arc::default() }
+    }
+
+    pub async fn loaded(&self, uri: &Uri) -> Option<Loaded> {
+        let projects = self.projects.read().await;
+        let project = projects.get(uri)?;
+        let documents = self.documents.read().await;
+        let open: HashMap<PathBuf, &str> = documents
+            .iter()
+            .filter_map(|(uri, document)| Some((project::normalize(&uri.to_file_path()?), document.text())))
+            .collect();
+        Some(project.load(|path| open.get(path).map(|text| (*text).to_owned())))
     }
 }
 
@@ -44,6 +58,9 @@ impl LanguageServer for Backend {
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let doc = params.text_document;
+        if let Some(path) = doc.uri.to_file_path() {
+            self.projects.write().await.insert(doc.uri.clone(), project::discover(&path, None));
+        }
         self.documents.write().await.insert(doc.uri, Document::new(&doc.text));
     }
 
@@ -58,6 +75,7 @@ impl LanguageServer for Backend {
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         let uri = params.text_document.uri;
         self.documents.write().await.remove(&uri);
+        self.projects.write().await.remove(&uri);
         self.client.publish_diagnostics(uri, Vec::new(), None).await;
     }
 }

@@ -1,0 +1,9 @@
+; mode: project
+; check: === project ===
+; nextln: origin: single
+; nextln: files:
+; nextln: project/configured/stray/lone.isle
+; nextln: note: isle-lsp.toml does not list this file
+; nextln: decls:
+; nextln: lone (project/configured/stray/lone.isle:1)
+(decl lone (Value) Value)

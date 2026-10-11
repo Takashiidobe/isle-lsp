@@ -1,0 +1,10 @@
+; mode: project
+; check: === project ===
+; nextln: origin: siblings
+; nextln: files:
+; nextln: project/siblings/main.isle
+; nextln: project/siblings/other.isle
+; nextln: decls:
+; nextln: simplify (project/siblings/main.isle:1)
+; nextln: helper (project/siblings/other.isle:1)
+(decl simplify (Value) Value)

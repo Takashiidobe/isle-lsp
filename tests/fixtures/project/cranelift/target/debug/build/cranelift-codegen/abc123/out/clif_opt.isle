@@ -1,0 +1,2 @@
+(decl iadd (Value Value) Value)
+(decl band (Value Value) Value)

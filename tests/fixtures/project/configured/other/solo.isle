@@ -1,0 +1,9 @@
+; mode: project
+; check: === project ===
+; nextln: origin: config project/configured/isle-lsp.toml
+; nextln: set: second
+; nextln: files:
+; nextln: project/configured/other/solo.isle
+; nextln: decls:
+; nextln: solo (project/configured/other/solo.isle:1)
+(decl solo (Value) Value)

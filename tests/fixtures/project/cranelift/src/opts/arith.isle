@@ -1,0 +1,19 @@
+; mode: project
+; check: === project ===
+; nextln: origin: cranelift-opt
+; nextln: set: opt
+; nextln: files:
+; nextln: project/cranelift/src/prelude.isle
+; nextln: project/cranelift/src/prelude_opt.isle
+; nextln: project/cranelift/src/opts/arith.isle
+; nextln: project/cranelift/src/opts/bits.isle
+; nextln: project/cranelift/target/debug/build/cranelift-codegen/abc123/out/numerics.isle
+; nextln: project/cranelift/target/debug/build/cranelift-codegen/abc123/out/clif_opt.isle
+; nextln: decls:
+; nextln: iconst_u (project/cranelift/src/prelude_opt.isle:1)
+; nextln: simplify (project/cranelift/src/opts/arith.isle:1)
+; nextln: u64_add (project/cranelift/target/debug/build/cranelift-codegen/abc123/out/numerics.isle:1)
+; nextln: iadd (project/cranelift/target/debug/build/cranelift-codegen/abc123/out/clif_opt.isle:1)
+; nextln: band (project/cranelift/target/debug/build/cranelift-codegen/abc123/out/clif_opt.isle:2)
+(decl simplify (Value) Value)
+(rule (simplify (iadd x (iconst 0))) x)

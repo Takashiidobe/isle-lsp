@@ -24,6 +24,14 @@ Modes live in `src/modes.rs`.
 - `syntax-tree`: one `form <keyword> @range closed|unclosed` line per top-level
   form with its nodes indented below, then syntax errors and the comment count.
   Fixtures under `broken/` exercise error recovery.
+- `project`: discovers the project of the fixture file and prints `origin:`, the
+  `set:` name, the `files:` in order, any `missing:` files and `note:`s, then
+  every `decl` name with `file:line` across the whole set (line numbers ignore
+  directive and query lines). Paths are relative to `tests/fixtures`, which is
+  also the boundary for the search. A query `open <path> <text>` makes `text`
+  an open buffer for `path` (`\n` is a newline), overriding the file on disk.
+  Fixtures live in directory trees under `project/`; files without a `mode:` line
+  are just members of the tree.
 - `source`: the text with directives and queries removed.
 
 Every fixture also runs through the invariants in `tests/harness/invariants.rs`:

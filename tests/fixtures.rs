@@ -57,7 +57,8 @@ fn run(relative: &str, path: &Path) -> Result<(), String> {
     let source = fs::read_to_string(path).map_err(|e| e.to_string())?;
     invariants::check(&source).map_err(|e| format!("invariant: {e}"))?;
     let queries = queries_of(&source);
-    let input = Input { source: &source, queries: &queries };
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let input = Input { source: &source, queries: &queries, path, root: &root };
 
     let mut output = String::new();
     for mode in modes_of(&source) {

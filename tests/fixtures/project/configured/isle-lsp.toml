@@ -1,0 +1,7 @@
+[[set]]
+name = "first"
+files = ["shared/prelude.isle", "rules/*.isle", "gone/missing.isle", "rules/../more/extra.isle"]
+
+[[set]]
+name = "second"
+files = ["other/solo.isle"]

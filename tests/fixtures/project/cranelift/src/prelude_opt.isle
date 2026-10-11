@@ -1,0 +1,1 @@
+(decl pure iconst_u (u64) Value)

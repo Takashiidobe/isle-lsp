@@ -1,0 +1,2 @@
+(decl pure partial helper (Imm64) u64)
+(rule (simplify x) x)

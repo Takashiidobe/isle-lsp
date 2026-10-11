@@ -1,0 +1,18 @@
+; mode: project
+; check: === project ===
+; nextln: origin: config project/configured/isle-lsp.toml
+; nextln: set: first
+; nextln: files:
+; nextln: project/configured/shared/prelude.isle
+; nextln: project/configured/rules/a.isle
+; nextln: project/configured/rules/b.isle
+; nextln: project/configured/gone/missing.isle
+; nextln: project/configured/more/extra.isle
+; nextln: missing: project/configured/gone/missing.isle
+; nextln: decls:
+; nextln: iconst (project/configured/shared/prelude.isle:2)
+; nextln: fold_a (project/configured/rules/a.isle:1)
+; nextln: fold_b (project/configured/rules/b.isle:1)
+; nextln: fold_extra (project/configured/more/extra.isle:1)
+(decl fold_a (Value) Value)
+(rule (fold_a (iconst 0)) (iconst 1))
