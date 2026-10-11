@@ -1,0 +1,15 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/unused/main.isle 1:6..1:12 error[type] no rules, extractor, or external definition for declaration 'unused'
+; nextln: diagnostics/unused/main.isle 1:6..1:12 hint[unused] `unused` is declared but never used
+; not: `used`
+; not: `external`
+; not: `entry`
+(type Value (primitive Value))
+(decl unused (Value) Value)
+(decl used (Value) Value)
+(decl external (Value) Value)
+(extern constructor external external)
+(decl entry (Value) Value)
+(rule (used x) (external x))
+(rule (entry x) (used x))

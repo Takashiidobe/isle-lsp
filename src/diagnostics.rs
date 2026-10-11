@@ -6,7 +6,7 @@ use cranelift_isle::error::{Error, Span as IsleSpan};
 use cranelift_isle::lexer::Lexer;
 use cranelift_isle::{overlap, parser as isle_parser, recursion, sema};
 use tower_lsp_server::ls_types::{
-    Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, Location, NumberOrString, Range, Uri,
+    Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DiagnosticTag, Location, NumberOrString, Range, Uri,
 };
 
 use crate::document::position_in;
@@ -47,6 +47,7 @@ pub fn all(project: &Project, loaded: &Loaded) -> Vec<FileDiagnostics> {
                 for error in semantic(loaded) {
                     place(loaded, &mut found, error);
                 }
+                unused_decls(loaded, &mut found);
             }
         }
     }
@@ -57,6 +58,25 @@ pub fn all(project: &Project, loaded: &Loaded) -> Vec<FileDiagnostics> {
         .zip(found)
         .map(|(source, diagnostics)| FileDiagnostics { path: source.path.clone(), diagnostics })
         .collect()
+}
+
+fn unused_decls(loaded: &Loaded, found: &mut [Vec<Diagnostic>]) {
+    let index = Index::build(loaded);
+    for (id, def) in index.defs.iter().enumerate() {
+        if def.kind != DefKind::Term || index.references(id).next().is_some() {
+            continue;
+        }
+        let source = &loaded.sources[def.file];
+        let mut diag = diagnostic(
+            source,
+            def.name_span,
+            DiagnosticSeverity::HINT,
+            "unused",
+            &format!("`{}` is declared but never used", def.name),
+        );
+        diag.tags = Some(vec![DiagnosticTag::UNNECESSARY]);
+        found[def.file].push(diag);
+    }
 }
 
 fn skip_reason(project: &Project, loaded: &Loaded) -> Option<String> {
