@@ -1,0 +1,31 @@
+; mode: navigate
+; check: === navigate ===
+; nextln: twin 8:7
+; nextln: Add the flipped rule navigate/twin/main.isle 8:48..8:48 => "\n(rule add_zero_flipped 1 (simplify (iadd (iconst 0) x)) x)"
+; nextln: twin 9:3
+; nextln: Add the flipped rule navigate/twin/main.isle 9:41..9:41 => "\n(rule 4 (simplify (iadd (iconst 1) x)) x)"
+; nextln: twin 10:3
+; nextln: none
+; nextln: twin 12:3
+; nextln: none
+; nextln: twin 13:3
+; nextln: none
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl iadd (Value Value) Value)
+(extern extractor infallible iadd iadd_extract)
+(decl isub (Value Value) Value)
+(extern extractor infallible isub isub_extract)
+(decl iconst (u64) Value)
+(extern extractor infallible iconst iconst_extract)
+(rule add_zero (simplify (iadd x (iconst 0))) x)
+;      ^ twin
+(rule 3 (simplify (iadd x (iconst 1))) x)
+;  ^ twin
+(rule (simplify (isub x (iconst 0))) x)
+;  ^ twin
+(rule both_a (simplify (iadd x (iconst 2))) x)
+(rule both_b 1 (simplify (iadd (iconst 2) x)) x)
+;  ^ twin
+(decl other () Value)
+;  ^ twin

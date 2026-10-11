@@ -10,6 +10,7 @@ use crate::hover;
 use crate::index;
 use crate::inlay;
 use crate::lexer::{self, TokenKind};
+use crate::lints;
 use crate::navigation;
 use crate::parser;
 use crate::project;
@@ -224,6 +225,13 @@ fn render_navigate(input: &Input) -> String {
             }
             "unused" => match actions::unused_decl(&index, &loaded, file, offset) {
                 Some((title, place)) => out.push_str(&format!("  {title} {}\n", locate_span(input, &loaded, place))),
+                None => out.push_str("  none\n"),
+            },
+            "twin" => match lints::twin_fix(&loaded, file, offset) {
+                Some(fix) => {
+                    let place = navigation::Place { file, span: fix.span };
+                    out.push_str(&format!("  {} {} => {:?}\n", fix.title, locate_span(input, &loaded, place), fix.new_text));
+                }
                 None => out.push_str("  none\n"),
             },
             "inlay" => {

@@ -141,6 +141,10 @@ their type, so they get no hint.
   placeholder per argument.
 - **Unused declaration**: with the cursor in a `decl` that nothing references
   (no rule, call, match or `extern`), remove it.
+- **Commutative twin**: with the cursor in a `simplify` rule on a commutative
+  operation with one constant operand and no flipped counterpart, add the
+  flipped rule after it. This works even when the `missing-commutative-twin`
+  lint is disabled.
 
 ## Custom requests
 

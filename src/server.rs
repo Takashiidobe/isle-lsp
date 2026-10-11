@@ -30,6 +30,7 @@ use crate::hover;
 use crate::index::{DefKind, Index};
 use crate::rules;
 use crate::inlay;
+use crate::lints;
 use crate::navigation::{self, Place};
 use crate::project::{self, Loaded, Project};
 use crate::semantic;
@@ -480,16 +481,25 @@ impl LanguageServer for Backend {
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
         let uri = &params.text_document.uri;
         let mut actions = actions::quick_fixes(uri, &params.context.diagnostics);
-        if let Some(analysis) = self.analyze(uri, params.range.start).await
-            && let Some((title, place)) = actions::unused_decl(&analysis.index, &analysis.loaded, analysis.file, analysis.offset)
-        {
-            let edit = TextEdit { range: analysis.range(place), new_text: String::new() };
-            actions.push(CodeAction {
-                title,
-                kind: Some(CodeActionKind::QUICKFIX),
-                edit: Some(WorkspaceEdit { changes: Some(HashMap::from([(uri.clone(), vec![edit])])), ..WorkspaceEdit::default() }),
-                ..CodeAction::default()
-            });
+        if let Some(analysis) = self.analyze(uri, params.range.start).await {
+            let mut push = |title: String, kind: CodeActionKind, edit: TextEdit| {
+                if actions.iter().any(|existing| existing.title == title) {
+                    return;
+                }
+                actions.push(CodeAction {
+                    title,
+                    kind: Some(kind),
+                    edit: Some(WorkspaceEdit { changes: Some(HashMap::from([(uri.clone(), vec![edit])])), ..WorkspaceEdit::default() }),
+                    ..CodeAction::default()
+                });
+            };
+            if let Some((title, place)) = actions::unused_decl(&analysis.index, &analysis.loaded, analysis.file, analysis.offset) {
+                push(title, CodeActionKind::QUICKFIX, TextEdit { range: analysis.range(place), new_text: String::new() });
+            }
+            if let Some(fix) = lints::twin_fix(&analysis.loaded, analysis.file, analysis.offset) {
+                let place = Place { file: analysis.file, span: fix.span };
+                push(fix.title, CodeActionKind::REFACTOR, TextEdit { range: analysis.range(place), new_text: fix.new_text });
+            }
         }
         Ok(Some(actions.into_iter().map(CodeActionOrCommand::CodeAction).collect()))
     }

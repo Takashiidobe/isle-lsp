@@ -31,10 +31,8 @@ struct Info<'a> {
     rhs: Shape,
 }
 
-pub fn run(loaded: &Loaded, disabled: &[String]) -> Vec<Lint> {
-    let all = rules::rules(loaded);
-    let infos: Vec<Info> = all
-        .iter()
+fn infos<'a>(all: &'a [Rule<'a>]) -> Vec<Info<'a>> {
+    all.iter()
         .map(|rule| Info {
             rule,
             lhs: (rule.head == "simplify" && rule.args.len() == 1)
@@ -42,7 +40,12 @@ pub fn run(loaded: &Loaded, disabled: &[String]) -> Vec<Lint> {
                 .filter(|shape| matches!(shape, Shape::Call(..))),
             rhs: rules::shape(rule.text, rule.rhs),
         })
-        .collect();
+        .collect()
+}
+
+pub fn run(loaded: &Loaded, disabled: &[String]) -> Vec<Lint> {
+    let all = rules::rules(loaded);
+    let infos = infos(&all);
     let mut found = Vec::new();
     no_op_and_cost(&infos, &mut found);
     shadowed(&infos, &mut found);
@@ -50,6 +53,17 @@ pub fn run(loaded: &Loaded, disabled: &[String]) -> Vec<Lint> {
     twins(&infos, &mut found);
     found.retain(|lint| !disabled.iter().any(|code| code == lint.code));
     found
+}
+
+pub fn twin_fix(loaded: &Loaded, file: usize, offset: usize) -> Option<Fix> {
+    let all = rules::rules(loaded);
+    let infos = infos(&all);
+    let mut found = Vec::new();
+    twins(&infos, &mut found);
+    found
+        .into_iter()
+        .find(|lint| lint.file == file && lint.span.start <= offset && offset <= lint.span.end)
+        .and_then(|lint| lint.fix)
 }
 
 fn lint(info: &Info, code: &'static str, message: String) -> Lint {
