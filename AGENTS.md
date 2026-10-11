@@ -146,8 +146,7 @@ fixture with the full actual output, so it turns hand-picked checks into a
 complete dump. Use it when the new output is right and the old checks are stale;
 then trim the result by hand if a smaller check reads better. Always read the
 diff (`-n`) before blessing, since a wrong output blessed once is a passing
-test. Port it from `../clif-lsp/tools/update_filecheck.py` when the fixture
-harness lands.
+test. Fixture format and modes are described in `tests/fixtures/README.md`.
 
 ## Architecture Overview
 

@@ -1,0 +1,16 @@
+; mode: document
+; check: at 0:1 -> utf16 1 -> byte 1
+; nextln: at 2:6 -> utf16 6 -> byte 6
+; nextln: at 4:5 -> utf16 4 -> byte 5
+; nextln: at 6:7 -> utf16 5 -> byte 7
+; nextln: at 8:1 -> utf16 1 -> byte 1
+(decl simplify (Value) Value)
+;^ at
+; abc x
+;     ^ at
+; é x
+;    ^ at
+; 😀 x
+;      ^ at
+(rule (simplify x) x)
+;^ at

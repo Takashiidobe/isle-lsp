@@ -1,0 +1,18 @@
+; mode: document
+; check: edit 1:0-1:0 x
+; nextln: edit 1:0-1:1
+; nextln: edit 1:7-1:8 g
+; nextln: edit 1:14-1:14 \n    é😀
+; nextln: edit 2:5-2:7 z
+; nextln: edit 2:0-3:0
+; check: text:
+; nextln: (decl f (Value) Value)
+; nextln: (rule (g x) x)
+(decl f (Value) Value)
+(rule (f x) x)
+; ^ edit 1:0-1:0 x
+; ^ edit 1:0-1:1
+; ^ edit 1:7-1:8 g
+; ^ edit 1:14-1:14 \n    é😀
+; ^ edit 2:5-2:7 z
+; ^ edit 2:0-3:0
