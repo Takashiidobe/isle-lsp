@@ -1,0 +1,69 @@
+; mode: navigate
+; check: === navigate ===
+; check: filetest 14:3
+; nextln: iadd_x_plus_zero.clif
+; check: test optimize
+; check: set opt_level=speed
+; check: target x86_64
+; check: function %iadd_x_plus_zero(i32) -> i32 {
+; nextln: block0(v0: i32):
+; nextln: v1 = iconst.i32 0
+; nextln: v2 = iadd v0, v1
+; nextln: return v2
+; nextln: ; check: return v0
+; check: filetest 15:3
+; check: v1 = iconst.i32 0
+; nextln: v2 = isub v1, v0
+; check: ; check: $$(r=v[0-9]+) = ineg v0
+; nextln: ; check: return $$r
+; check: filetest 16:3
+; check: v1 = isub v0, v0
+; check: ; check: $$(c0=v[0-9]+) = iconst.i32 0
+; nextln: ; check: return $$c0
+; check: filetest 17:3
+; check: v1 = iconst.i32 2
+; nextln: v2 = iadd v0, v1
+; check: ; check: $$(c0=v[0-9]+) = iconst.i32 2
+; nextln: ; check: $$(r=v[0-9]+) = iadd v0, $$c0
+; nextln: ; check: return $$r
+; check: filetest 18:3
+; check: function %main_rule5(i32, i32) -> i32 {
+; check: v2 = ineg v1
+; nextln: v3 = isub v0, v2
+; check: ; check: $$(r=v[0-9]+) = iadd $$(a=v0, v1|v1, v0)
+; check: filetest 19:3
+; nextln: none
+; nextln: filetest 20:3
+; nextln: none
+; nextln: filetest 21:3
+; nextln: none
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl iadd (Value Value) Value)
+(extern extractor infallible iadd iadd_extract)
+(extern constructor iadd iadd_ctor)
+(decl isub (Value Value) Value)
+(extern extractor infallible isub isub_extract)
+(extern constructor isub isub_ctor)
+(decl ineg (Value) Value)
+(extern extractor infallible ineg ineg_extract)
+(extern constructor ineg ineg_ctor)
+(decl iconst (u64) Value)
+(extern extractor infallible iconst iconst_extract)
+(extern constructor iconst iconst_ctor)
+(rule iadd_x_plus_zero (simplify (iadd ty x (iconst_u ty 0))) (subsume x))
+;  ^ filetest
+(rule (simplify (isub ty (iconst_u ty 0) x)) (ineg ty x))
+;  ^ filetest
+(rule (simplify (isub ty x x)) (subsume (iconst_u ty 0)))
+;  ^ filetest
+(rule (simplify (iadd ty x (iconst_u ty c))) (iadd ty (iconst_u ty c) x))
+;  ^ filetest
+(rule (simplify (isub ty x (ineg ty y))) (iadd ty x y))
+;  ^ filetest
+(rule (simplify (ineg ty (ineg ty x))) (if-let y x) y)
+;  ^ filetest
+(rule (simplify (iadd ty x (ineg ty (ineg ty y)))) (iadd ty (isub ty x y) (iconst_u ty 1)))
+;  ^ filetest
+(decl other () Value)
+;  ^ filetest

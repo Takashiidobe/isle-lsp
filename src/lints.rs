@@ -8,7 +8,7 @@ pub const SHADOWED: &str = "shadowed-by-priority";
 pub const LOOP: &str = "rewrite-loop";
 pub const TWIN: &str = "missing-commutative-twin";
 
-const COMMUTATIVE: [&str; 8] = ["iadd", "imul", "band", "bor", "bxor", "smin", "smax", "umin"];
+pub const COMMUTATIVE: [&str; 9] = ["iadd", "imul", "band", "bor", "bxor", "smin", "smax", "umin", "umax"];
 
 pub struct Fix {
     pub title: String,

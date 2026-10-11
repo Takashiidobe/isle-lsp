@@ -149,6 +149,18 @@ their type, so they get no hint.
   operation with one constant operand and no flipped counterpart, add the
   flipped rule after it. This works even when the `missing-commutative-twin`
   lint is disabled.
+- **Generate filetest**: with the cursor in a `simplify` rule, create
+  `<rule name>.clif` (or `<file>_rule<N>.clif`) next to the source with a
+  `test optimize` filetest. The left-hand side becomes an `i32` function, with
+  one parameter per variable and distinct constants for `iconst` variables, and
+  the right-hand side becomes `; check:` lines. It is offered only for rules
+  without `if-let` clauses that use plain integer opcodes (`iadd`, `isub`,
+  `band`, `ishl`, ... ) and whose result is a variable, a constant, or one
+  such operation. Operand order of commutative operations is not checked,
+  since Cranelift canonicalizes it. Run against Cranelift 0.136.2, all 364 tests
+  generated from `src/opts` pass under `optimize`. A rule whose right-hand side
+  is costlier than its left-hand side and lacks `subsume` can still fail,
+  because the egraph keeps the cheaper form.
 
 ## Custom requests
 

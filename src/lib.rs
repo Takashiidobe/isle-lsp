@@ -2,6 +2,7 @@ pub mod actions;
 pub mod completion;
 pub mod diagnostics;
 pub mod document;
+pub mod filetest;
 pub mod hover;
 pub mod index;
 pub mod inlay;

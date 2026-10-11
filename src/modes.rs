@@ -6,6 +6,7 @@ use crate::actions;
 use crate::completion;
 use crate::diagnostics;
 use crate::document::Document;
+use crate::filetest;
 use crate::hover;
 use crate::index;
 use crate::inlay;
@@ -225,6 +226,15 @@ fn render_navigate(input: &Input) -> String {
             }
             "unused" => match actions::unused_decl(&index, &loaded, file, offset) {
                 Some((title, place)) => out.push_str(&format!("  {title} {}\n", locate_span(input, &loaded, place))),
+                None => out.push_str("  none\n"),
+            },
+            "filetest" => match filetest::generate(&loaded, file, offset) {
+                Some(generated) => {
+                    out.push_str(&format!("  {}\n", generated.file_name));
+                    for line in generated.text.lines() {
+                        out.push_str(&format!("  | {line}\n"));
+                    }
+                }
                 None => out.push_str("  none\n"),
             },
             "twin" => match lints::twin_fix(&loaded, file, offset) {

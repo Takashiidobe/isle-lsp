@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tower_lsp_server::jsonrpc::{Error, Result};
 use tower_lsp_server::ls_types::{
-    CodeAction, CodeActionKind, CodeLens, CodeLensOptions, CodeLensParams, Command, TextDocumentIdentifier, CodeActionOrCommand, CodeActionParams, DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse,
+    CodeAction, CodeActionKind, CreateFile, CreateFileOptions, DocumentChangeOperation, DocumentChanges, OptionalVersionedTextDocumentIdentifier, ResourceOp, TextDocumentEdit, CodeLens, CodeLensOptions, CodeLensParams, Command, TextDocumentIdentifier, CodeActionOrCommand, CodeActionParams, DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse,
     FoldingRange, FoldingRangeParams, FoldingRangeProviderCapability, SemanticToken, SemanticTokenModifier,
     SemanticTokenType, SemanticTokens, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
     SemanticTokensParams, SemanticTokensResult, SemanticTokensServerCapabilities, SymbolKind, WorkspaceSymbol,
@@ -26,6 +26,7 @@ use crate::actions;
 use crate::completion::{self, ItemKind};
 use crate::diagnostics;
 use crate::document::{Document, position_in};
+use crate::filetest;
 use crate::hover;
 use crate::index::{DefKind, Index};
 use crate::rules;
@@ -499,6 +500,28 @@ impl LanguageServer for Backend {
             if let Some(fix) = lints::twin_fix(&analysis.loaded, analysis.file, analysis.offset) {
                 let place = Place { file: analysis.file, span: fix.span };
                 push(fix.title, CodeActionKind::REFACTOR, TextEdit { range: analysis.range(place), new_text: fix.new_text });
+            }
+            if let Some(generated) = filetest::generate(&analysis.loaded, analysis.file, analysis.offset)
+                && let Some(target) = Uri::from_file_path(analysis.loaded.sources[analysis.file].path.with_file_name(&generated.file_name))
+            {
+                let create = DocumentChangeOperation::Op(ResourceOp::Create(CreateFile {
+                    uri: target.clone(),
+                    options: Some(CreateFileOptions { overwrite: Some(false), ignore_if_exists: Some(true) }),
+                    annotation_id: None,
+                }));
+                let fill = DocumentChangeOperation::Edit(TextDocumentEdit {
+                    text_document: OptionalVersionedTextDocumentIdentifier { uri: target, version: None },
+                    edits: vec![OneOf::Left(TextEdit { range: Range::default(), new_text: generated.text })],
+                });
+                actions.push(CodeAction {
+                    title: format!("Generate filetest {}", generated.file_name),
+                    kind: Some(CodeActionKind::REFACTOR),
+                    edit: Some(WorkspaceEdit {
+                        document_changes: Some(DocumentChanges::Operations(vec![create, fill])),
+                        ..WorkspaceEdit::default()
+                    }),
+                    ..CodeAction::default()
+                });
             }
         }
         Ok(Some(actions.into_iter().map(CodeActionOrCommand::CodeAction).collect()))
