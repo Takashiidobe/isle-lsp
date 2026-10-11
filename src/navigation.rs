@@ -15,8 +15,23 @@ pub struct Edit {
 }
 
 pub fn definition(index: &Index, file: usize, offset: usize) -> Option<Place> {
-    let def = &index.defs[index.resolve(file, offset)?];
+    let id = index.resolve(file, offset)?;
+    let id = variant_prefix(index, id, file, offset).unwrap_or(id);
+    let def = &index.defs[id];
     Some(Place { file: def.file, span: def.name_span })
+}
+
+fn variant_prefix(index: &Index, id: DefId, file: usize, offset: usize) -> Option<DefId> {
+    let def = &index.defs[id];
+    if def.kind != DefKind::Variant {
+        return None;
+    }
+    let reference = index.references(id).find(|r| r.file == file && covers(r.span, offset))?;
+    let (ty, _) = def.name.split_once('.')?;
+    if offset >= reference.span.start + ty.len() {
+        return None;
+    }
+    index.defs.iter().position(|other| other.kind == DefKind::Type && other.name == ty)
 }
 
 pub fn references(index: &Index, file: usize, offset: usize, include_declaration: bool) -> Vec<Place> {

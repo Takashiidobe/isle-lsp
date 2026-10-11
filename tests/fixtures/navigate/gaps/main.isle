@@ -1,0 +1,24 @@
+(type Kind (enum A B))
+(decl foo (Kind) Kind)
+(spec (foo k) (provide (= result k)))
+;      ^ definition
+(instantiate foo)
+;             ^ definition
+(model Kind (type Int))
+;       ^ definition
+(rule (foo Kind.A) Kind.B)
+;           ^ definition
+;                      ^ definition
+(rule (foo Kind.B) Kind.A)
+; mode: navigate
+; check: === navigate ===
+; nextln: definition 2:7
+; nextln: navigate/gaps/main.isle 1:6..1:9
+; nextln: definition 3:14
+; nextln: navigate/gaps/main.isle 1:6..1:9
+; nextln: definition 4:8
+; nextln: navigate/gaps/main.isle 0:6..0:10
+; nextln: definition 5:12
+; nextln: navigate/gaps/main.isle 0:6..0:10
+; nextln: definition 5:23
+; nextln: navigate/gaps/main.isle 0:19..0:20

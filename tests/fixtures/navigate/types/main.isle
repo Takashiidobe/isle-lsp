@@ -6,7 +6,7 @@
 ; nextln: prepare 4:21
 ; nextln: navigate/types/main.isle 4:25..4:30
 ; nextln: definition 4:21
-; nextln: navigate/types/main.isle 1:17..1:22
+; nextln: navigate/types/main.isle 1:6..1:10
 ; nextln: rename 5:14 Shape
 ; nextln: navigate/types/main.isle 1:6..1:10 => "Shape"
 ; nextln: navigate/types/main.isle 2:23..2:27 => "Shape"

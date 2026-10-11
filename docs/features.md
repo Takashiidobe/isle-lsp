@@ -82,6 +82,11 @@ Terms keep their roles apart in the index: a call in a right-hand side, a match
 in a pattern (an extractor use), a rule head, and an `extern` or `extractor`
 implementation all resolve to the term's `decl`.
 
+Go to definition on the type part of a variant such as `Kind.A` jumps to the
+type, and on the rest of it to the variant. The heads of `spec` forms, the term
+of `instantiate` and the type of `model` resolve to their declarations, and take
+part in references and rename.
+
 Rename validates the new name. It rejects names that are not valid symbols,
 `$`-prefixed names for anything but constants, a variable named `_`, and names
 that clash with an existing definition, including one of a different kind.

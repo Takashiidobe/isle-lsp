@@ -283,6 +283,25 @@ impl<'a> Builder<'a> {
                     self.reference(span, Role::Attr, def);
                 }
             }
+            FormKind::Spec => {
+                if let Some(Node::List(signature)) = list.items.get(1)
+                    && let Some(head) = signature.head()
+                {
+                    let def = self.terms.get(head.span.text(self.text)).copied();
+                    self.reference(head.span, Role::Attr, def);
+                }
+            }
+            FormKind::Instantiate => {
+                if let Some((name, span)) = list.items.get(1).and_then(|node| self.symbol(node)) {
+                    let def = self.terms.get(name).copied();
+                    self.reference(span, Role::Attr, def);
+                }
+            }
+            FormKind::Model => {
+                if let Some(ty) = list.items.get(1) {
+                    self.type_ref(ty);
+                }
+            }
             FormKind::Extern => self.walk_extern(list),
             FormKind::Extractor => self.walk_extractor(list),
             FormKind::Convert => {
