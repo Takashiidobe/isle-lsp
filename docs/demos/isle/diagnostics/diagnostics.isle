@@ -1,0 +1,12 @@
+(type Op
+  (enum (Add (a u32) (b u32))
+        (Neg (a u32))))
+
+(decl lower (Op) u32)
+
+(decl emit_neg (u32) u32)
+(extern constructor emit_neg emit_neg)
+
+(rule (lower (Op.Add x 0)) x)
+(rule (lower (Op.Add 0 x)) x)
+(rule (lower (Op.Neg x)) (emit_ng x))

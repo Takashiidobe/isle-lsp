@@ -1,0 +1,20 @@
+(type Value (primitive Value))
+
+(decl partial simplify (Value) Value)
+
+(decl partial iadd (Value Value) Value)
+(extern extractor iadd iadd_extract)
+(extern constructor iadd iadd_ctor)
+(decl partial isub (Value Value) Value)
+(extern extractor isub isub_extract)
+(decl ineg (Value) Value)
+(extern constructor ineg ineg_ctor)
+(decl partial band (Value Value) Value)
+(extern extractor band band_extract)
+(extern constructor band band_ctor)
+(decl iconst (u64) Value)
+(extern extractor infallible iconst iconst_extract)
+
+(rule add_zero (simplify (iadd x (iconst 0))) x)
+(rule 1 (simplify (isub x y)) (iadd x (ineg y)))
+(rule 2 (simplify (band x y)) (band x y))

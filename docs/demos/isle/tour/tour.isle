@@ -1,0 +1,29 @@
+(type Op
+  (enum (Add (a u32) (b u32))
+        (Mul (a u32) (b u32))
+        (Neg (a u32))))
+
+;; lowers one instruction to its result register
+(decl lower (Op) u32)
+
+(decl emit_add (u32 u32) u32)
+(extern constructor emit_add emit_add)
+(decl emit_mul (u32 u32) u32)
+(extern constructor emit_mul emit_mul)
+(decl emit_shl (u32 u32) u32)
+(extern constructor emit_shl emit_shl)
+(decl emit_neg (u32) u32)
+(extern constructor emit_neg emit_neg)
+
+;; doubles a value with a shift
+(decl double (u32) u32)
+(rule (double x) (emit_shl x 1))
+
+(decl unused_helper (u32) u32)
+
+(rule 2 (lower (Op.Add x 0)) x)
+(rule 1 (lower (Op.Add x x)) (double x))
+(rule (lower (Op.Add x y)) (emit_add x y))
+(rule 1 (lower (Op.Mul x 2)) (double x))
+(rule (lower (Op.Mul x y)) (emit_mul x y))
+(rule (lower (Op.Neg x)) (emit_neg x))

@@ -6,7 +6,7 @@ Set Height 800
 Set Theme "Catppuccin Mocha"
 Set TypingSpeed 60ms
 
-Type~ "nvim docs/demos/isle/calls/calls.isle"
+Type~ "nvim -n -i NONE docs/demos/isle/calls/calls.isle"
 Enter
 Hide
 Sleep 2500ms
