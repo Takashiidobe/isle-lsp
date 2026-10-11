@@ -1,3 +1,8 @@
-fn main() {
-    println!("Hello, world!");
+use isle_lsp::server::service;
+use tower_lsp_server::Server;
+
+#[tokio::main]
+async fn main() {
+    let (service, socket) = service();
+    Server::new(tokio::io::stdin(), tokio::io::stdout(), socket).serve(service).await;
 }

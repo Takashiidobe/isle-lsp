@@ -2,5 +2,28 @@
 name = "isle-lsp"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.88"
+description = "Language server for ISLE, Cranelift's instruction selection and rewrite DSL"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Takashiidobe/isle-lsp"
+keywords = ["lsp", "cranelift", "isle", "language-server"]
+categories = ["development-tools"]
+include = [
+  "/src",
+  "/docs/*.md",
+  "/README.md",
+  "/LICENSE-*",
+]
 
 [dependencies]
+cranelift-isle = "=0.136.2"
+ropey = "1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.2", features = [
+  "macros",
+  "rt-multi-thread",
+  "io-std",
+  "sync",
+] }
+tower-lsp-server = "0.23"
