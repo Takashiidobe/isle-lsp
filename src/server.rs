@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tower_lsp_server::jsonrpc::{Error, Result};
 use tower_lsp_server::ls_types::{
-    CodeActionOrCommand, CodeActionParams, CompletionItem, CompletionItemKind, CompletionOptions, CompletionParams,
+    CodeActionOrCommand, CodeActionParams, InlayHint, InlayHintKind, InlayHintLabel, InlayHintParams, CompletionItem, CompletionItemKind, CompletionOptions, CompletionParams,
     CompletionResponse, InsertTextFormat, ParameterInformation, ParameterLabel, SignatureHelp, SignatureHelpOptions,
     SignatureHelpParams, SignatureInformation, CodeActionProviderCapability, CodeActionResponse, Diagnostic,
     DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DocumentHighlight,
@@ -23,6 +23,7 @@ use crate::diagnostics;
 use crate::document::{Document, position_in};
 use crate::hover;
 use crate::index::Index;
+use crate::inlay;
 use crate::navigation::{self, Place};
 use crate::project::{self, Loaded, Project};
 
@@ -125,6 +126,7 @@ impl LanguageServer for Backend {
                     trigger_characters: Some(vec![" ".to_owned()]),
                     ..SignatureHelpOptions::default()
                 }),
+                inlay_hint_provider: Some(OneOf::Left(true)),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 definition_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
@@ -161,6 +163,27 @@ impl LanguageServer for Backend {
             contents: HoverContents::Markup(MarkupContent { kind: MarkupKind::Markdown, value: found.markdown }),
             range: Some(analysis.range(Place { file: analysis.file, span: found.span })),
         }))
+    }
+
+    async fn inlay_hint(&self, params: InlayHintParams) -> Result<Option<Vec<InlayHint>>> {
+        let Some(analysis) = self.analyze(&params.text_document.uri, params.range.start).await else { return Ok(None) };
+        let text = &analysis.loaded.sources[analysis.file].text;
+        let hints = inlay::hints(&analysis.index, &analysis.loaded, analysis.file)
+            .into_iter()
+            .map(|hint| (position_in(text, hint.offset), hint.label))
+            .filter(|(position, _)| params.range.start <= *position && *position <= params.range.end)
+            .map(|(position, label)| InlayHint {
+                position,
+                label: InlayHintLabel::String(label),
+                kind: Some(InlayHintKind::TYPE),
+                text_edits: None,
+                tooltip: None,
+                padding_left: Some(false),
+                padding_right: Some(false),
+                data: None,
+            })
+            .collect();
+        Ok(Some(hints))
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {

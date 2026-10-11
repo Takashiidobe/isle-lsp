@@ -4,6 +4,7 @@ pub mod diagnostics;
 pub mod document;
 pub mod hover;
 pub mod index;
+pub mod inlay;
 pub mod navigation;
 pub mod lexer;
 pub mod modes;

@@ -84,6 +84,12 @@ Where the enclosing term's `decl` gives an expected type, terms and values of
 other types are left out. Signature help shows `(term ArgType...) -> Ret` for
 the innermost call and highlights the current argument.
 
+## Inlay hints
+
+Variables bound in patterns and `if-let` clauses get a `: Type` hint after the
+name, using the same type inference as hover. `let` bindings already spell out
+their type, so they get no hint.
+
 ## Project files
 
 ISLE files only make sense together, so the server groups them into a project

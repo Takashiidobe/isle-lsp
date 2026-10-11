@@ -1,0 +1,24 @@
+; mode: navigate
+; check: === navigate ===
+; nextln: inlay 12:1
+; nextln: inlay/main.isle 9:25 : Imm
+; nextln: inlay/main.isle 10:13 : Value
+; nextln: inlay/main.isle 10:15 : Value
+; nextln: inlay/main.isle 11:13 : Value
+; nextln: inlay/main.isle 11:23 : Imm
+; nextln: inlay/main.isle 11:35 : Value
+; nextln: inlay/main.isle 12:17 : Value
+
+(type Value (primitive Value))
+(type Imm (primitive Imm))
+(decl iconst (Imm) Value)
+(extern extractor iconst iconst_etor)
+(decl pure double (Value) Value)
+(extern constructor double double_ctor)
+(decl pair (Value Value) Value)
+(decl simplify (Value) Value)
+(rule (simplify (iconst c)) (double (double (iconst c))))
+(rule (pair a b) (let ((y Value (double a))) (pair y b)))
+(rule (pair a (iconst k)) (if-let z (double a)) (pair z a))
+(rule (simplify w) w)
+;^ inlay

@@ -8,6 +8,7 @@ use crate::diagnostics;
 use crate::document::Document;
 use crate::hover;
 use crate::index;
+use crate::inlay;
 use crate::lexer::{self, TokenKind};
 use crate::navigation;
 use crate::parser;
@@ -163,6 +164,15 @@ fn render_navigate(input: &Input) -> String {
             "uses" => places(navigation::references(&index, file, offset, false), &mut out),
             "highlight" => places(navigation::highlights(&index, file, offset), &mut out),
             "prepare" => places(navigation::prepare_rename(&index, &loaded, file, offset).into_iter().collect(), &mut out),
+            "inlay" => {
+                let hints = inlay::hints(&index, &loaded, file);
+                if hints.is_empty() {
+                    out.push_str("  none\n");
+                }
+                for hint in hints {
+                    out.push_str(&format!("  {} {}\n", locate(input, &loaded, file, hint.offset), hint.label));
+                }
+            }
             "complete" => {
                 let items = completion::complete(&index, &loaded, file, offset);
                 if items.is_empty() {

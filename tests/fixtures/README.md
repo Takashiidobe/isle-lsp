@@ -49,7 +49,7 @@ Modes live in `src/modes.rs`.
   echoes as `kind L:C [args]` and is followed by indented `path L:C..L:C`
   results, or `none`. Kinds are `definition`, `references` (with the
   declaration), `uses` (without it), `highlight` (current file only),
-  `hover` (range then the markdown, each line prefixed with `|`), `complete`
+  `inlay` (every hint in the file as `path L:C : Type`), `hover` (range then the markdown, each line prefixed with `|`), `complete`
   (one `label Kind detail` line per item), `signature` (label, parameters and
   active index), `prepare` (prepare-rename range) and `rename <new name>`, which lists
   `range => "text"` edits or `error: message`. Each fixture lives in its own
