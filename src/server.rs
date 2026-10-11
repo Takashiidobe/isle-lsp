@@ -32,6 +32,7 @@ use crate::filetest;
 use crate::hover;
 use crate::hierarchy;
 use crate::index::{DefId, DefKind, Index};
+use crate::refactor;
 use crate::rules;
 use crate::inlay;
 use crate::lints;
@@ -606,6 +607,20 @@ impl LanguageServer for Backend {
             if let Some(fix) = lints::twin_fix(&analysis.loaded, analysis.file, analysis.offset) {
                 let place = Place { file: analysis.file, span: fix.span };
                 push(fix.title, CodeActionKind::REFACTOR, TextEdit { range: analysis.range(place), new_text: fix.new_text });
+            }
+            let end = self.documents.read().await.get(uri).map_or(analysis.offset, |document| document.offset(params.range.end));
+            for refactoring in refactor::all(&analysis.loaded, &analysis.index, analysis.file, analysis.offset, end) {
+                let mut changes: HashMap<Uri, Vec<TextEdit>> = HashMap::new();
+                for edit in refactoring.edits {
+                    let Some(location) = analysis.location(edit.place) else { continue };
+                    changes.entry(location.uri).or_default().push(TextEdit { range: location.range, new_text: edit.new_text });
+                }
+                actions.push(CodeAction {
+                    title: refactoring.title,
+                    kind: Some(CodeActionKind::REFACTOR),
+                    edit: Some(WorkspaceEdit { changes: Some(changes), ..WorkspaceEdit::default() }),
+                    ..CodeAction::default()
+                });
             }
             if let Some(generated) = filetest::generate(&analysis.loaded, analysis.file, analysis.offset)
                 && let Some(target) = Uri::from_file_path(analysis.loaded.sources[analysis.file].path.with_file_name(&generated.file_name))

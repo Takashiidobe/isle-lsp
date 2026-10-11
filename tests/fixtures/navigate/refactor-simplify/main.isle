@@ -1,0 +1,32 @@
+(decl simplify (Value) Value)
+;     ^ refactor
+(rule (simplify (iadd ty x y)) x)
+;                ^ refactor
+(rule (simplify (ineg ty x)) x)
+;                 ^ refactor
+(rule (simplify (iconst ty n)) (iconst ty n))
+;                ^ refactor
+; mode: navigate
+; check: === navigate ===
+; nextln: refactor 0:6
+; nextln: none
+; nextln: refactor 1:17
+; nextln: Name rule `simplify_1`
+; nextln: file navigate/refactor-simplify/main.isle
+; nextln: | (rule simplify_1 (simplify (iadd ty x y)) x)
+; nextln: Insert simplify rule for `iadd`
+; nextln: file navigate/refactor-simplify/main.isle
+; nextln: |
+; nextln: | (rule (simplify (iadd ty x y)) x)
+; nextln: refactor 2:18
+; nextln: Name rule `simplify_1`
+; nextln: file navigate/refactor-simplify/main.isle
+; nextln: | (rule simplify_1 (simplify (ineg ty x)) x)
+; nextln: Insert simplify rule for `ineg`
+; nextln: file navigate/refactor-simplify/main.isle
+; nextln: |
+; nextln: | (rule (simplify (ineg ty x)) x)
+; nextln: refactor 3:17
+; nextln: Name rule `simplify_1`
+; nextln: file navigate/refactor-simplify/main.isle
+; nextln: | (rule simplify_1 (simplify (iconst ty n)) (iconst ty n))

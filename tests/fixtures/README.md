@@ -57,7 +57,10 @@ Modes live in `src/modes.rs`.
   `range => "text"` edits or `error: message`. `incoming` and `outgoing` print
   the call hierarchy of the term or macro under the cursor: its kind and name,
   then one line per caller or callee with its definition and an indented `call`
-  line per call site. `view <name> [term]` renders an
+  line per call site. `refactor [end column]` lists the refactoring code actions
+  at the cursor, or for the selection up to the end column on the same line,
+  and prints the changed lines of each edited file after applying the edit.
+  `view <name> [term]` renders an
   `isle/view` view (`trie`, `rust` or `graph`) for the term under the cursor or
   the given one and prints every section: text and tree lines, tables as
   ` | `-separated rows, and `(html page)` for a page. `page <name> [term]` is

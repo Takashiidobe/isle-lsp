@@ -178,6 +178,28 @@ their type, so they get no hint.
   generated from `src/opts` pass under `optimize`. A rule whose right-hand side
   is costlier than its left-hand side and lacks `subsume` can still fail,
   because the egraph keeps the cheaper form.
+- **Name or unname a rule**: with the cursor in a rule, give an unnamed rule the
+  name `<term>_<n>` (the first unused), or remove the name of a named one.
+- **Inline a term**: with the cursor on a call to a term that has exactly one
+  rule, no `extern` implementation, only distinct variables as patterns, no
+  clauses and no `let` in its result, replace the call with that result with the
+  arguments substituted. The `decl` stays; remove it with the unused-declaration
+  action once nothing calls it. ISLE macros are not used, because `macro` only
+  defines spec macros for verification annotations.
+- **Extract into a term**: with a selection that is exactly a call inside a
+  rule's result, replace it with a call to a new term `extracted_<n>` and add
+  its `decl` and single rule above the rule. The parameters are the variables
+  the selection uses from outside, so every one needs a known type, and the
+  result type is the called term's. A selection starting with `let` is not
+  offered.
+- **Insert simplify rule**: with the cursor on an opcode declared in
+  `clif_opt.isle` and a `simplify` term in the project, append
+  `(rule (simplify (<opcode> ty x y)) x)` to the file. Variable names come from
+  the argument types (`ty` for `Type`, `x`, `y`, `z` for `Value`), and the
+  result is the first `Value` operand as a placeholder to replace. It is not
+  offered for opcodes without a `Value` operand.
+
+Edits that touch other files are sent as one workspace edit.
 
 ## Custom requests
 

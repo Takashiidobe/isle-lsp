@@ -16,6 +16,7 @@ use crate::lints;
 use crate::navigation;
 use crate::parser;
 use crate::project;
+use crate::refactor;
 use crate::rules;
 use crate::semantic;
 use crate::symbols;
@@ -180,6 +181,32 @@ fn render_navigate(input: &Input) -> String {
             "references" => places(navigation::references(&index, file, offset, true), &mut out),
             "uses" => places(navigation::references(&index, file, offset, false), &mut out),
             "highlight" => places(navigation::highlights(&index, file, offset), &mut out),
+            "refactor" => {
+                let end = query.args.trim().parse::<usize>().map_or(offset, |col| line_starts[query.line] + col);
+                let found = refactor::all(&loaded, &index, file, offset, end);
+                if found.is_empty() {
+                    out.push_str("  none\n");
+                }
+                for refactoring in found {
+                    out.push_str(&format!("  {}\n", refactoring.title));
+                    let mut files: Vec<usize> = refactoring.edits.iter().map(|edit| edit.place.file).collect();
+                    files.dedup();
+                    for changed in files {
+                        let mut text = loaded.sources[changed].text.clone();
+                        let mut edits: Vec<_> = refactoring.edits.iter().filter(|edit| edit.place.file == changed).collect();
+                        edits.sort_by_key(|edit| std::cmp::Reverse(edit.place.span.start));
+                        for edit in edits {
+                            text.replace_range(edit.place.span.start..edit.place.span.end, &edit.new_text);
+                        }
+                        out.push_str(&format!("  file {}\n", shown(input.root, &loaded.sources[changed].path)));
+                        let before: Vec<&str> = loaded.sources[changed].text.lines().collect();
+                        let after: Vec<&str> = text.lines().collect();
+                        let head = before.iter().zip(&after).take_while(|(a, b)| a == b).count();
+                        let tail = before.iter().rev().zip(after.iter().rev()).take(before.len().min(after.len()) - head).take_while(|(a, b)| a == b).count();
+                        after[head..after.len() - tail].iter().for_each(|line| out.push_str(&format!("  | {line}\n")));
+                    }
+                }
+            }
             "incoming" | "outgoing" => {
                 let Some(def) = hierarchy::prepare(&index, file, offset) else {
                     out.push_str("  none\n");

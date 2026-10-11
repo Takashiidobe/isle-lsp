@@ -1,0 +1,79 @@
+(decl foo (u32) u32)
+(decl bar (u32 u32) u32)
+(decl twice (u32) u32)
+(rule (twice x) (bar x x))
+(rule (foo x) (twice (bar x 1)))
+;      ^ refactor
+;                ^ refactor
+;                    ^ refactor 30
+;                    ^ refactor 25
+(decl multi (u32) u32)
+(rule (multi 0) 0)
+(rule (multi x) x)
+(rule 2 (foo x) (multi x))
+;                ^ refactor
+(decl shadow (u32) u32)
+(rule (shadow x) (let ((y u32 x)) (bar y y)))
+(rule 3 (foo x) (shadow x))
+;                ^ refactor
+(decl ext (u32) u32)
+(extern constructor ext ext)
+(rule 4 (foo x) (ext x))
+;                ^ refactor
+(rule 5 (foo x) (let ((a u32 x)) (bar a 3)))
+;               ^ refactor 41
+(rule named (foo 0) 0)
+;       ^ refactor
+(rule foo_1 (foo 1) 1)
+;       ^ refactor
+; mode: navigate
+; check: === navigate ===
+; nextln: refactor 4:7
+; nextln: Name rule `foo_2`
+; nextln: file navigate/refactor/main.isle
+; nextln: | (rule foo_2 (foo x) (twice (bar x 1)))
+; nextln: refactor 4:17
+; nextln: Name rule `foo_2`
+; nextln: file navigate/refactor/main.isle
+; nextln: | (rule foo_2 (foo x) (twice (bar x 1)))
+; nextln: Inline `twice`
+; nextln: file navigate/refactor/main.isle
+; nextln: | (rule (foo x) (bar (bar x 1) (bar x 1)))
+; nextln: refactor 4:21 30
+; nextln: Name rule `foo_2`
+; nextln: file navigate/refactor/main.isle
+; nextln: | (rule foo_2 (foo x) (twice (bar x 1)))
+; nextln: Extract into term `extracted_1`
+; nextln: file navigate/refactor/main.isle
+; nextln: | (decl extracted_1 (u32) u32)
+; nextln: | (rule (extracted_1 x) (bar x 1))
+; nextln: |
+; nextln: | (rule (foo x) (twice (extracted_1 x)))
+; nextln: refactor 4:21 25
+; nextln: Name rule `foo_2`
+; nextln: file navigate/refactor/main.isle
+; nextln: | (rule foo_2 (foo x) (twice (bar x 1)))
+; nextln: refactor 8:17
+; nextln: Name rule `foo_2`
+; nextln: file navigate/refactor/main.isle
+; nextln: | (rule foo_2 2 (foo x) (multi x))
+; nextln: refactor 11:17
+; nextln: Name rule `foo_2`
+; nextln: file navigate/refactor/main.isle
+; nextln: | (rule foo_2 3 (foo x) (shadow x))
+; nextln: refactor 14:17
+; nextln: Name rule `foo_2`
+; nextln: file navigate/refactor/main.isle
+; nextln: | (rule foo_2 4 (foo x) (ext x))
+; nextln: refactor 15:16 41
+; nextln: Name rule `foo_2`
+; nextln: file navigate/refactor/main.isle
+; nextln: | (rule foo_2 5 (foo x) (let ((a u32 x)) (bar a 3)))
+; nextln: refactor 16:8
+; nextln: Remove name of rule `named`
+; nextln: file navigate/refactor/main.isle
+; nextln: | (rule (foo 0) 0)
+; nextln: refactor 17:8
+; nextln: Remove name of rule `foo_1`
+; nextln: file navigate/refactor/main.isle
+; nextln: | (rule (foo 1) 1)
