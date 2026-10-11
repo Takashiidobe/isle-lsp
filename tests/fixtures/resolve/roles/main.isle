@@ -1,0 +1,49 @@
+; mode: resolve
+; check: === resolve ===
+; nextln: resolve 8:8 -> term wrap @ resolve/roles/main.isle 6:6
+; nextln: impl resolve/roles/main.isle 7:12
+; nextln: rule-head resolve/roles/main.isle 8:7
+; nextln: rule-head resolve/roles/main.isle 9:7
+; nextln: call resolve/roles/main.isle 9:16
+; nextln: resolve 8:15 -> term iconst @ resolve/roles/main.isle 2:6
+; nextln: impl resolve/roles/main.isle 4:18
+; nextln: match resolve/roles/main.isle 7:21
+; nextln: match resolve/roles/main.isle 8:13
+; nextln: call resolve/roles/main.isle 8:25
+; nextln: match resolve/roles/main.isle 12:17
+; nextln: resolve 8:24 -> unresolved
+; nextln: resolve 9:16 -> term wrap @ resolve/roles/main.isle 6:6
+; nextln: impl resolve/roles/main.isle 7:12
+; nextln: rule-head resolve/roles/main.isle 8:7
+; nextln: rule-head resolve/roles/main.isle 9:7
+; nextln: call resolve/roles/main.isle 9:16
+; nextln: resolve 11:20 -> variant Kind.Big @ resolve/roles/main.isle 1:24
+; nextln: call resolve/roles/main.isle 11:20
+; nextln: resolve 12:18 -> term iconst @ resolve/roles/main.isle 2:6
+; nextln: impl resolve/roles/main.isle 4:18
+; nextln: match resolve/roles/main.isle 7:21
+; nextln: match resolve/roles/main.isle 8:13
+; nextln: call resolve/roles/main.isle 8:25
+; nextln: match resolve/roles/main.isle 12:17
+; nextln: resolve 12:34 -> variant Kind.Small @ resolve/roles/main.isle 1:17
+; nextln: call resolve/roles/main.isle 12:33
+(type Value (primitive Value))
+(type Kind (enum Small (Big (size Value))))
+(decl iconst (Value) Value)
+(decl pure kind_of (Value) Kind)
+(extern extractor iconst iconst_etor)
+(extern constructor kind_of kind_of_ctor)
+(decl wrap (Value) Value)
+(extractor (wrap v) (iconst v))
+(rule (wrap (iconst c)) (iconst c))
+;       ^ resolve
+;              ^ resolve
+;                       ^ resolve
+(rule (wrap x) (wrap x))
+;               ^ resolve
+(decl classify (Value) Kind)
+(rule (classify x) (Kind.Big x))
+;                   ^ resolve
+(rule (classify (iconst $ZERO)) (Kind.Small))
+;                 ^ resolve
+;                                 ^ resolve

@@ -1,0 +1,34 @@
+; mode: resolve
+; check: === resolve ===
+; nextln: resolve 1:12 -> term simplify @ resolve/basic/main.isle 1:6
+; nextln: rule-head resolve/basic/main.isle 4:7
+; nextln: rule-head resolve/basic/main.isle 5:18
+; nextln: rule-head resolve/basic/main.isle 6:7
+; nextln: resolve 3:20 -> term double @ resolve/basic/main.isle 2:11
+; nextln: impl resolve/basic/main.isle 3:20
+; nextln: call resolve/basic/main.isle 4:20
+; nextln: resolve 4:7 -> term simplify @ resolve/basic/main.isle 1:6
+; nextln: rule-head resolve/basic/main.isle 4:7
+; nextln: rule-head resolve/basic/main.isle 5:18
+; nextln: rule-head resolve/basic/main.isle 6:7
+; nextln: resolve 4:17 -> variable x @ resolve/basic/main.isle 4:16
+; nextln: variable resolve/basic/main.isle 4:27
+; nextln: resolve 4:28 -> variable x @ resolve/basic/main.isle 4:16
+; nextln: variable resolve/basic/main.isle 4:27
+; nextln: resolve 5:6 -> rule named_rule @ resolve/basic/main.isle 5:6
+; nextln: resolve 6:19 -> variable z @ resolve/basic/main.isle 6:16
+; nextln: variable resolve/basic/main.isle 6:19
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+;           ^ resolve
+(decl pure double (Value) Value)
+(extern constructor double double)
+;                   ^ resolve
+(rule (simplify x) (double x))
+;      ^ resolve
+;                ^ resolve
+;                           ^ resolve
+(rule named_rule (simplify y) y)
+;     ^ resolve
+(rule (simplify z) z)
+;                  ^ resolve

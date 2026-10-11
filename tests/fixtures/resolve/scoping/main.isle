@@ -1,0 +1,37 @@
+; mode: resolve
+; check: === resolve ===
+; nextln: resolve 3:9 -> variable x @ resolve/scoping/main.isle 3:9
+; nextln: variable resolve/scoping/main.isle 3:30
+; nextln: resolve 3:19 -> variable x @ resolve/scoping/main.isle 3:19
+; nextln: variable resolve/scoping/main.isle 3:38
+; nextln: variable resolve/scoping/main.isle 3:40
+; nextln: resolve 3:22 -> type Value @ resolve/scoping/main.isle 0:6
+; nextln: type resolve/scoping/main.isle 1:9
+; nextln: type resolve/scoping/main.isle 1:16
+; nextln: type resolve/scoping/main.isle 2:9
+; nextln: type resolve/scoping/main.isle 2:15
+; nextln: type resolve/scoping/main.isle 2:22
+; nextln: type resolve/scoping/main.isle 3:21
+; nextln: resolve 3:31 -> variable x @ resolve/scoping/main.isle 3:9
+; nextln: variable resolve/scoping/main.isle 3:30
+; nextln: resolve 3:37 -> term g @ resolve/scoping/main.isle 2:6
+; nextln: call resolve/scoping/main.isle 3:36
+; nextln: rule-head resolve/scoping/main.isle 4:7
+; nextln: resolve 4:9 -> variable y @ resolve/scoping/main.isle 4:9
+; nextln: variable resolve/scoping/main.isle 4:11
+; nextln: variable resolve/scoping/main.isle 4:14
+; nextln: resolve 4:12 -> variable y @ resolve/scoping/main.isle 4:9
+; nextln: variable resolve/scoping/main.isle 4:11
+; nextln: variable resolve/scoping/main.isle 4:14
+(type Value (primitive Value))
+(decl f (Value) Value)
+(decl g (Value Value) Value)
+(rule (f x) (let ((x Value (f x))) (g x x)))
+;        ^ resolve
+;                  ^ resolve
+;                     ^ resolve
+;                              ^ resolve
+;                                    ^ resolve
+(rule (g y y) y)
+;        ^ resolve
+;           ^ resolve

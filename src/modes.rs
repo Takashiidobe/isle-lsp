@@ -5,6 +5,7 @@ use tower_lsp_server::ls_types::{DiagnosticSeverity, NumberOrString, Position, R
 use crate::actions;
 use crate::diagnostics;
 use crate::document::Document;
+use crate::index;
 use crate::lexer::{self, TokenKind};
 use crate::parser;
 use crate::project;
@@ -28,6 +29,7 @@ pub fn render(mode: &str, input: &Input) -> Result<String, String> {
     match mode {
         "project" => Ok(render_project(input)),
         "diagnostics" => Ok(render_diagnostics(input)),
+        "resolve" => Ok(render_resolve(input)),
         "document" => render_document(input),
         "tokens" => Ok(render_tokens(&plain_text(input.source))),
         "syntax-tree" => Ok(render_syntax_tree(&plain_text(input.source))),
@@ -105,6 +107,42 @@ fn render_diagnostics(input: &Input) -> String {
     }
     if out.is_empty() {
         out.push_str("no diagnostics\n");
+    }
+    out
+}
+
+fn render_resolve(input: &Input) -> String {
+    let relative = |path: &Path| path.strip_prefix(input.root).unwrap_or(path).display().to_string();
+    let (_, loaded) = load_project(input);
+    let index = index::Index::build(&loaded);
+    let here = project::normalize(input.path);
+    let Some(file) = loaded.sources.iter().position(|source| source.path == here) else {
+        return "fixture file is not part of its project\n".to_owned();
+    };
+    let at = |file: usize, offset: usize| {
+        let text = &loaded.sources[file].text;
+        let line = text[..offset].matches('\n').count();
+        let skipped = text.lines().take(line).filter(|l| is_directive(l) || is_caret(l)).count();
+        let column = offset - text[..offset].rfind('\n').map_or(0, |newline| newline + 1);
+        format!("{} {}:{column}", relative(&loaded.sources[file].path), line - skipped)
+    };
+    let mut line_starts = vec![0];
+    line_starts.extend(input.source.match_indices('\n').map(|(i, _)| i + 1));
+    let mut out = String::new();
+    for query in input.queries.iter().filter(|q| q.kind == "resolve") {
+        let offset = line_starts[query.line] + query.col;
+        let skipped = input.source.lines().take(query.line).filter(|l| is_directive(l) || is_caret(l)).count();
+        let label = format!("resolve {}:{}", query.line - skipped, query.col);
+        match index.resolve(file, offset) {
+            None => out.push_str(&format!("{label} -> unresolved\n")),
+            Some(id) => {
+                let def = &index.defs[id];
+                out.push_str(&format!("{label} -> {} {} @ {}\n", def.kind.label(), def.name, at(def.file, def.name_span.start)));
+                for reference in index.references(id) {
+                    out.push_str(&format!("  {} {}\n", reference.role.label(), at(reference.file, reference.span.start)));
+                }
+            }
+        }
     }
     out
 }

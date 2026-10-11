@@ -1,0 +1,13 @@
+; mode: resolve
+; check: === resolve ===
+; nextln: resolve 0:8 -> term simplify @ resolve/cross-file/a.isle 1:6
+; nextln: rule-head resolve/cross-file/b.isle 0:7
+; nextln: resolve 1:14 -> type Value @ resolve/cross-file/a.isle 0:6
+; nextln: type resolve/cross-file/a.isle 1:16
+; nextln: type resolve/cross-file/a.isle 1:23
+; nextln: type resolve/cross-file/b.isle 1:13
+; nextln: type resolve/cross-file/b.isle 1:20
+(rule (simplify x) x)
+;       ^ resolve
+(decl other (Value) Value)
+;             ^ resolve

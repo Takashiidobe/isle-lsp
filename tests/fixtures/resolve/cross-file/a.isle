@@ -1,0 +1,2 @@
+(type Value (primitive Value))
+(decl simplify (Value) Value)

@@ -38,6 +38,13 @@ Modes live in `src/modes.rs`.
   ignore directive and query lines and columns are UTF-16. Because sibling
   files form a project, each diagnostics fixture lives in its own directory
   under `diagnostics/`.
+- `resolve`: builds the symbol index over the whole project and, for each
+  `resolve` query, prints what the cursor is on as `kind name @ path L:C`
+  (the definition) followed by one indented `role path L:C` line per reference
+  to it. Roles are `type`, `call` (constructor use in an expression), `match`
+  (extractor use in a pattern), `rule-head`, `impl` (`extern` and `extractor`
+  forms), `attr`, `const` and `variable`. Cursors on nothing print `unresolved`.
+  Each fixture lives in its own directory, as for `diagnostics`.
 - `source`: the text with directives and queries removed.
 
 Every fixture also runs through the invariants in `tests/harness/invariants.rs`:
