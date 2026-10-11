@@ -1,0 +1,8 @@
+(decl multi pick (u32) u32)
+(rule (pick 0) 1)
+(rule (pick x) x)
+(decl multi chain (u32) u32)
+(rule (chain x) (pick x))
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: no diagnostics

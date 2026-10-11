@@ -1,0 +1,7 @@
+(decl partial pick (u32) u32)
+(rule 1 (pick 0) 1)
+(rule (pick x) x)
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/lint-partial-total/main.isle 0:0..0:29 warning[partial-but-total] heuristic: `pick` is declared partial but this rule always matches and cannot fail
+; nextln: related diagnostics/lint-partial-total/main.isle 2:0..2:17 related rule

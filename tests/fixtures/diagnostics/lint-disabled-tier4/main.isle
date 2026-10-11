@@ -1,0 +1,7 @@
+(decl partial pick (u32) u32)
+(rule (pick x) x)
+(decl multi one (u32) u32)
+(rule (one x) x)
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: no diagnostics

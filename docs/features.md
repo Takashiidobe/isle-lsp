@@ -58,6 +58,18 @@ Two more groups run alongside the semantic layer on a complete project:
     constant operand and no rule for the operands in the other order. A quick
     fix adds the flipped rule right after it, one priority higher so that it
     does not overlap, and renames a named rule to `<name>_flipped`.
+  - `partial-but-total`: a `decl partial` without an `extern` implementation
+    has a rule whose patterns are all variables or `_`, with no clauses and a
+    result that calls no partial term, so the term cannot fail. Related
+    location: that rule.
+  - `multi-single-result`: a `decl multi` without an `extern` implementation
+    has exactly one rule, and nothing in that rule calls a multi term. Related
+    location: that rule.
+
+  Rules that repeat each other under variable renaming need no lint of their
+  own, because Cranelift already reports them as `shadowed` or `overlap`
+  errors. Run over Cranelift 0.136.2's `src/opts` (46 `partial` and 7 `multi`
+  declarations), `partial-but-total` and `multi-single-result` report nothing.
 
   Cranelift's own mid-end moves constants to the right before `simplify` runs,
   so it deliberately has no twin rules and `missing-commutative-twin` fires on

@@ -1,0 +1,6 @@
+(decl multi pick (u32) u32)
+(rule (pick x) x)
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/lint-multi-single/main.isle 0:0..0:27 warning[multi-single-result] heuristic: `pick` is declared multi but its only rule produces a single result
+; nextln: related diagnostics/lint-multi-single/main.isle 1:0..1:17 related rule

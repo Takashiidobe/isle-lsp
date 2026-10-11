@@ -1,0 +1,10 @@
+(decl partial pick (u32) u32)
+(rule (pick 0) 1)
+(rule (pick 1) 2)
+(decl partial other (u32) u32)
+(decl partial third (u32) u32)
+(extern constructor third third)
+(rule (other x) (third x))
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: no diagnostics

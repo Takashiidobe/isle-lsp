@@ -1,12 +1,15 @@
 use crate::project::Loaded;
 use crate::rules::{self, Rule, Shape};
-use crate::syntax::{Node, Span};
+use crate::syntax::{AtomKind, FormKind, Node, Span, form_kind};
 
 pub const COSTLIER_RHS: &str = "costlier-rhs";
 pub const NO_OP: &str = "no-op-rewrite";
 pub const SHADOWED: &str = "shadowed-by-priority";
 pub const LOOP: &str = "rewrite-loop";
 pub const TWIN: &str = "missing-commutative-twin";
+
+pub const PARTIAL_TOTAL: &str = "partial-but-total";
+pub const MULTI_SINGLE: &str = "multi-single-result";
 
 pub const COMMUTATIVE: [&str; 9] = ["iadd", "imul", "band", "bor", "bxor", "smin", "smax", "umin", "umax"];
 
@@ -51,6 +54,9 @@ pub fn run(loaded: &Loaded, disabled: &[String]) -> Vec<Lint> {
     shadowed(&infos, &mut found);
     loops(&infos, &mut found);
     twins(&infos, &mut found);
+    let decls = decls(loaded);
+    partial_but_total(&all, &decls, &mut found);
+    multi_single_result(&all, &decls, &mut found);
     found.retain(|lint| !disabled.iter().any(|code| code == lint.code));
     found
 }
@@ -140,6 +146,111 @@ fn loops(infos: &[Info], found: &mut Vec<Lint>) {
             );
             lint.related.push((infos[to].rule.file, infos[to].rule.form));
             found.push(lint);
+        }
+    }
+}
+
+struct Decl {
+    file: usize,
+    form: Span,
+    name: String,
+    partial: bool,
+    multi: bool,
+    external: bool,
+}
+
+fn decls(loaded: &Loaded) -> Vec<Decl> {
+    let mut found = Vec::new();
+    let mut external = Vec::new();
+    for (file, source) in loaded.sources.iter().enumerate() {
+        for node in &source.file.items {
+            let Node::List(list) = node else { continue };
+            let words: Vec<&str> = list
+                .items
+                .iter()
+                .skip(1)
+                .map_while(|item| match item {
+                    Node::Atom(atom) if atom.kind == AtomKind::Symbol => Some(atom.span.text(&source.text)),
+                    _ => None,
+                })
+                .collect();
+            match form_kind(&source.text, list) {
+                Some(FormKind::Decl) => {
+                    let Some((name, flags)) = words.split_last() else { continue };
+                    found.push(Decl {
+                        file,
+                        form: list.span,
+                        name: (*name).to_owned(),
+                        partial: flags.contains(&"partial"),
+                        multi: flags.contains(&"multi"),
+                        external: false,
+                    });
+                }
+                Some(FormKind::Extern) if matches!(words.first(), Some(&("constructor" | "extractor"))) => {
+                    if let Some(name) = words.iter().skip(1).find(|word| **word != "infallible") {
+                        external.push((*name).to_owned());
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    for decl in &mut found {
+        decl.external = external.contains(&decl.name);
+    }
+    found
+}
+
+fn calls_any(text: &str, node: &Node, wanted: &dyn Fn(&str) -> bool) -> bool {
+    let Node::List(list) = node else { return false };
+    list.head().is_some_and(|head| wanted(head.span.text(text))) || list.items.iter().any(|item| calls_any(text, item, wanted))
+}
+
+fn irrefutable(shape: &Shape) -> bool {
+    match shape {
+        Shape::Wild | Shape::Var(_) => true,
+        Shape::And(parts) => parts.iter().all(irrefutable),
+        _ => false,
+    }
+}
+
+fn partial_but_total(all: &[Rule], decls: &[Decl], found: &mut Vec<Lint>) {
+    let is_partial = |name: &str| decls.iter().any(|decl| decl.partial && decl.name == name);
+    for decl in decls.iter().filter(|decl| decl.partial && !decl.external) {
+        let catch_all = all.iter().find(|rule| {
+            rule.head == decl.name
+                && rule.clauses.is_empty()
+                && rules::shapes(rule.text, rule.args).iter().all(irrefutable)
+                && !calls_any(rule.text, rule.rhs, &is_partial)
+        });
+        if let Some(rule) = catch_all {
+            found.push(Lint {
+                file: decl.file,
+                span: decl.form,
+                code: PARTIAL_TOTAL,
+                message: format!("heuristic: `{}` is declared partial but this rule always matches and cannot fail", decl.name),
+                related: vec![(rule.file, rule.form)],
+                fix: None,
+            });
+        }
+    }
+}
+
+fn multi_single_result(all: &[Rule], decls: &[Decl], found: &mut Vec<Lint>) {
+    let is_multi = |name: &str| decls.iter().any(|decl| decl.multi && decl.name == name);
+    for decl in decls.iter().filter(|decl| decl.multi && !decl.external) {
+        let mut own = all.iter().filter(|rule| rule.head == decl.name);
+        let Some(rule) = own.next().filter(|_| own.next().is_none()) else { continue };
+        let fans_out = rule.args.iter().chain(rule.clauses).chain([rule.rhs]).any(|node| calls_any(rule.text, node, &is_multi));
+        if !fans_out {
+            found.push(Lint {
+                file: decl.file,
+                span: decl.form,
+                code: MULTI_SINGLE,
+                message: format!("heuristic: `{}` is declared multi but its only rule produces a single result", decl.name),
+                related: vec![(rule.file, rule.form)],
+                fix: None,
+            });
         }
     }
 }

@@ -1,0 +1,2 @@
+[lints]
+disable = ["partial-but-total", "multi-single-result"]
