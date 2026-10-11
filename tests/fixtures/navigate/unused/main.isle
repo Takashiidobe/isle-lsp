@@ -1,0 +1,14 @@
+; mode: navigate
+; check: === navigate ===
+; nextln: unused 1:6
+; nextln: none
+; nextln: unused 2:6
+; nextln: Remove unused declaration of `unused` navigate/unused/main.isle 2:0..3:0
+(type Value (primitive Value))
+(decl used (Value) Value)
+;     ^ unused
+(decl unused (Value) Value)
+;     ^ unused
+(decl later (Value) Value)
+(rule (used x) x)
+(rule (later x) (used x))

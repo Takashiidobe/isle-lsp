@@ -105,6 +105,20 @@ their type, so they get no hint.
   macros and variables (binding sites carry the `declaration` modifier), and
   integers, with the `priority` modifier on rule priorities.
 
+## Code actions
+
+- **Overlap**: on an `overlap` diagnostic, give the rule a priority (insert
+  `1`, or raise an existing priority by one).
+- **Unknown term**: on an `Unknown term` error, replace it with the closest
+  declared term, or insert a `(decl ...)` for it above the rule, with one type
+  placeholder per argument.
+- **Unused declaration**: with the cursor in a `decl` that nothing references
+  (no rule, call, match or `extern`), remove it.
+
+## Custom requests
+
+None yet. Every feature above uses standard LSP requests.
+
 ## Project files
 
 ISLE files only make sense together, so the server groups them into a project

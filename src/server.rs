@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tower_lsp_server::jsonrpc::{Error, Result};
 use tower_lsp_server::ls_types::{
-    CodeActionOrCommand, CodeActionParams, DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse,
+    CodeAction, CodeActionKind, CodeActionOrCommand, CodeActionParams, DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse,
     FoldingRange, FoldingRangeParams, FoldingRangeProviderCapability, SemanticToken, SemanticTokenModifier,
     SemanticTokenType, SemanticTokens, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
     SemanticTokensParams, SemanticTokensResult, SemanticTokensServerCapabilities, SymbolKind, WorkspaceSymbol,
@@ -397,7 +397,19 @@ impl LanguageServer for Backend {
     }
 
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
-        let actions = actions::quick_fixes(&params.text_document.uri, &params.context.diagnostics);
+        let uri = &params.text_document.uri;
+        let mut actions = actions::quick_fixes(uri, &params.context.diagnostics);
+        if let Some(analysis) = self.analyze(uri, params.range.start).await
+            && let Some((title, place)) = actions::unused_decl(&analysis.index, &analysis.loaded, analysis.file, analysis.offset)
+        {
+            let edit = TextEdit { range: analysis.range(place), new_text: String::new() };
+            actions.push(CodeAction {
+                title,
+                kind: Some(CodeActionKind::QUICKFIX),
+                edit: Some(WorkspaceEdit { changes: Some(HashMap::from([(uri.clone(), vec![edit])])), ..WorkspaceEdit::default() }),
+                ..CodeAction::default()
+            });
+        }
         Ok(Some(actions.into_iter().map(CodeActionOrCommand::CodeAction).collect()))
     }
 

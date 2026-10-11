@@ -1,0 +1,12 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/unknown-term/main.isle 3:19..3:30 error[type] Unknown term in expression: 'simplfy'
+; nextln: fix Replace with `simplify` 3:20..3:27 => "simplify"
+; nextln: fix Declare term `simplfy` 3:0..3:0 => "(decl simplfy (Value) Value)\n\n"
+; nextln: diagnostics/unknown-term/main.isle 4:17..4:33 error[type] Unknown term in expression: 'frobnicate'
+; nextln: fix Declare term `frobnicate` 4:0..4:0 => "(decl frobnicate (Value Value) Value)\n\n"
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl wrap (Value Value) Value)
+(rule (simplify x) (simplfy x))
+(rule (wrap a b) (frobnicate a b))

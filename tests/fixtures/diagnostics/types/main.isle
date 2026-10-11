@@ -1,6 +1,7 @@
 ; mode: diagnostics
 ; check: === diagnostics ===
 ; nextln: diagnostics/types/main.isle 3:19..3:30 error[type] Unknown term in expression: 'missing'
+; nextln: fix Declare term `missing` 3:0..3:0 => "(decl missing (Value) Value)\n\n"
 ; nextln: diagnostics/types/main.isle 4:19..4:28 error[type] Mismatched types: expression expects type 'Value' but term has return type 'u64'
 ; nextln: diagnostics/types/main.isle 4:26..4:27 error[type] Variable 'x' has type Value but we need u64 in context
 ; nextln: diagnostics/types/main.isle 5:16..5:30 error[type] Incorrect argument count for term 'simplify': got 2, expect 1

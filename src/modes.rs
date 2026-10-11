@@ -211,6 +211,10 @@ fn render_navigate(input: &Input) -> String {
                     ));
                 }
             }
+            "unused" => match actions::unused_decl(&index, &loaded, file, offset) {
+                Some((title, place)) => out.push_str(&format!("  {title} {}\n", locate_span(input, &loaded, place))),
+                None => out.push_str("  none\n"),
+            },
             "inlay" => {
                 let hints = inlay::hints(&index, &loaded, file);
                 if hints.is_empty() {

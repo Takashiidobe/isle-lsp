@@ -11,7 +11,8 @@ use tower_lsp_server::ls_types::{
 
 use crate::document::position_in;
 use crate::project::{Loaded, Project, Source};
-use crate::syntax::{AtomKind, Node, Span};
+use crate::index::{DefKind, Index};
+use crate::syntax::{AtomKind, List, Node, Span};
 
 const SOURCE: &str = "isle-lsp";
 
@@ -143,7 +144,82 @@ fn place(loaded: &Loaded, found: &mut [Vec<Diagnostic>], error: Error) {
             return;
         }
     };
+    let file = primary.from.file;
+    let fixes = (code == "type").then(|| unknown_term_fixes(loaded, &message, primary.from.offset, file)).flatten();
+    let before = found.get(file).map_or(0, Vec::len);
     push_isle(loaded, found, code, message, primary, &others, related_message);
+    if let (Some(fixes), Some(diag)) = (fixes, found.get_mut(file).and_then(|diags| diags.get_mut(before))) {
+        diag.data = Some(serde_json::json!({ "fixes": fixes }));
+    }
+}
+
+fn unknown_term_fixes(loaded: &Loaded, message: &str, offset: usize, file: usize) -> Option<Vec<serde_json::Value>> {
+    let rest = message.strip_prefix("Unknown term in pattern: '").or_else(|| message.strip_prefix("Unknown term in expression: '"))?;
+    let name = rest.split('\'').next()?;
+    let source = loaded.sources.get(file)?;
+    let node = node_starting_at(&source.file.items, offset)?;
+    let list = source.file.items.iter().find_map(|item| find_list(item, node));
+    let head = match list {
+        Some(list) => list.head()?.span,
+        None => node,
+    };
+    let index = Index::build(loaded);
+    let mut fixes = Vec::new();
+    if let Some(closest) = closest_term(&index, name) {
+        fixes.push(serde_json::json!({
+            "title": format!("Replace with `{closest}`"),
+            "range": range_of(source, head),
+            "newText": closest,
+        }));
+    }
+    let form = enclosing_form(source, node);
+    let arity = list.map_or(0, |list| list.items.len().saturating_sub(1));
+    let ty = index.defs.iter().find(|def| def.kind == DefKind::Type).map_or("T", |def| def.name.as_str());
+    let args = vec![ty; arity].join(" ");
+    fixes.push(serde_json::json!({
+        "title": format!("Declare term `{name}`"),
+        "range": range_of(source, Span { start: form.start, end: form.start }),
+        "newText": format!("(decl {name} ({args}) {ty})\n\n"),
+    }));
+    Some(fixes)
+}
+
+fn find_list(node: &Node, span: Span) -> Option<&List> {
+    let Node::List(list) = node else { return None };
+    if list.span == span {
+        return Some(list);
+    }
+    if list.span.start <= span.start && span.end <= list.span.end {
+        return list.items.iter().find_map(|item| find_list(item, span));
+    }
+    None
+}
+
+fn closest_term<'a>(index: &'a Index, name: &str) -> Option<&'a str> {
+    let limit = (name.len() / 3).max(2);
+    index
+        .defs
+        .iter()
+        .filter(|def| matches!(def.kind, DefKind::Term | DefKind::Variant | DefKind::Macro))
+        .map(|def| (edit_distance(name, &def.name), def.name.as_str()))
+        .filter(|&(distance, candidate)| distance > 0 && distance <= limit && candidate != name)
+        .min_by_key(|&(distance, _)| distance)
+        .map(|(_, candidate)| candidate)
+}
+
+fn edit_distance(a: &str, b: &str) -> usize {
+    let b: Vec<char> = b.chars().collect();
+    let mut row: Vec<usize> = (0..=b.len()).collect();
+    for (i, ca) in a.chars().enumerate() {
+        let mut diagonal = row[0];
+        row[0] = i + 1;
+        for (j, &cb) in b.iter().enumerate() {
+            let above = row[j + 1];
+            row[j + 1] = (above + 1).min(row[j] + 1).min(diagonal + usize::from(ca != cb));
+            diagonal = above;
+        }
+    }
+    row[b.len()]
 }
 
 fn push_isle(
