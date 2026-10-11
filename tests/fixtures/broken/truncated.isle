@@ -1,0 +1,20 @@
+; mode: syntax-tree
+; check: === syntax-tree ===
+; nextln: form rule @0:0..0:41 unclosed
+; nextln: symbol rule @0:1
+; nextln: list @0:6..0:41 unclosed
+; nextln: symbol simplify @0:7
+; nextln: list @0:16..0:41 unclosed
+; nextln: symbol iadd @0:17
+; nextln: symbol ty @0:22
+; nextln: symbol x @0:25
+; nextln: list @0:27..0:41 unclosed
+; nextln: symbol iconst_u @0:28
+; nextln: symbol ty @0:37
+; nextln: int 0 @0:40
+; nextln: error 0:0..0:1 unclosed `(`
+; nextln: error 0:6..0:7 unclosed `(`
+; nextln: error 0:16..0:17 unclosed `(`
+; nextln: error 0:27..0:28 unclosed `(`
+; nextln: comments 0
+(rule (simplify (iadd ty x (iconst_u ty 0

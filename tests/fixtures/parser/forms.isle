@@ -1,0 +1,98 @@
+; mode: syntax-tree
+; check: === syntax-tree ===
+; nextln: form pragma @0:0..0:15 closed
+; nextln: symbol pragma @0:1
+; nextln: symbol unused @0:8
+; nextln: form type @1:0..1:30 closed
+; nextln: symbol type @1:1
+; nextln: symbol Imm64 @1:6
+; nextln: list @1:12..1:29
+; nextln: symbol primitive @1:13
+; nextln: symbol Imm64 @1:23
+; nextln: form type @2:0..2:37 closed
+; nextln: symbol type @2:1
+; nextln: symbol Opcode @2:6
+; nextln: symbol extern @2:13
+; nextln: list @2:20..2:36
+; nextln: symbol enum @2:21
+; nextln: symbol Iadd @2:26
+; nextln: symbol Isub @2:31
+; nextln: form decl @3:0..3:29 closed
+; nextln: symbol decl @3:1
+; nextln: symbol simplify @3:6
+; nextln: list @3:15..3:22
+; nextln: symbol Value @3:16
+; nextln: symbol Value @3:23
+; nextln: form decl @4:0..4:46 closed
+; nextln: symbol decl @4:1
+; nextln: symbol pure @4:6
+; nextln: symbol partial @4:11
+; nextln: symbol u64_from_imm64 @4:19
+; nextln: list @4:34..4:41
+; nextln: symbol Imm64 @4:35
+; nextln: symbol u64 @4:42
+; nextln: form extern @5:0..5:50 closed
+; nextln: symbol extern @5:1
+; nextln: symbol constructor @5:8
+; nextln: symbol u64_from_imm64 @5:20
+; nextln: symbol u64_from_imm64 @5:35
+; nextln: form extractor @6:0..6:51 closed
+; nextln: symbol extractor @6:1
+; nextln: list @6:11..6:22
+; nextln: symbol is_zero @6:12
+; nextln: symbol x @6:20
+; nextln: list @6:23..6:50
+; nextln: symbol iconst @6:24
+; nextln: list @6:31..6:49
+; nextln: symbol u64_from_imm64 @6:32
+; nextln: int 0 @6:47
+; nextln: form convert @7:0..7:29 closed
+; nextln: symbol convert @7:1
+; nextln: symbol Inst @7:9
+; nextln: symbol Value @7:14
+; nextln: symbol def_inst @7:20
+; nextln: form rule @9:0..10:8 closed
+; nextln: symbol rule @9:1
+; nextln: int 1 @9:6
+; nextln: list @9:8..9:46
+; nextln: symbol simplify @9:9
+; nextln: list @9:18..9:45
+; nextln: symbol iadd @9:19
+; nextln: symbol ty @9:24
+; nextln: symbol x @9:27
+; nextln: list @9:29..9:44
+; nextln: symbol iconst_u @9:30
+; nextln: symbol ty @9:39
+; nextln: int 0 @9:42
+; nextln: symbol x @10:6
+; nextln: form rule @11:0..11:55 closed
+; nextln: symbol rule @11:1
+; nextln: list @11:6..11:52
+; nextln: symbol simplify @11:7
+; nextln: list @11:16..11:51
+; nextln: symbol isub @11:17
+; nextln: symbol ty @11:22
+; nextln: list @11:25..11:35
+; nextln: symbol iconst @11:26
+; nextln: symbol c @11:33
+; nextln: symbol y @11:36
+; nextln: at @ @11:37
+; nextln: list @11:38..11:50
+; nextln: symbol iadd @11:39
+; nextln: symbol _ @11:44
+; nextln: symbol _ @11:46
+; nextln: symbol _ @11:48
+; nextln: symbol y @11:53
+; nextln: comments 1
+(pragma unused)
+(type Imm64 (primitive Imm64))
+(type Opcode extern (enum Iadd Isub))
+(decl simplify (Value) Value)
+(decl pure partial u64_from_imm64 (Imm64) u64)
+(extern constructor u64_from_imm64 u64_from_imm64)
+(extractor (is_zero x) (iconst (u64_from_imm64 0)))
+(convert Inst Value def_inst)
+;; fold x + 0
+(rule 1 (simplify (iadd ty x (iconst_u ty 0)))
+      x)
+(rule (simplify (isub ty (iconst c) y@(iadd _ _ _))) y)

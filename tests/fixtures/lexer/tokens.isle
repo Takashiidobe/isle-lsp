@@ -1,0 +1,25 @@
+; mode: tokens
+; check: === tokens ===
+; nextln: 0:0 Comment ";; line comment"
+; nextln: 1:0 BlockComment "(; block (; nested ;) comment ;)"
+; nextln: 2:0 LParen "("
+; nextln: 2:1 Symbol "rule"
+; nextln: 2:6 LParen "("
+; nextln: 2:7 Symbol "f"
+; nextln: 2:9 Symbol "x"
+; nextln: 2:10 At "@"
+; nextln: 2:11 LParen "("
+; nextln: 2:12 Symbol "g"
+; nextln: 2:14 Symbol "_"
+; nextln: 2:15 RParen ")"
+; nextln: 2:17 Int "0xff"
+; nextln: 2:22 Int "-12"
+; nextln: 2:26 Int "1_000"
+; nextln: 2:32 Int "0b101"
+; nextln: 2:38 Int "0o7"
+; nextln: 2:41 RParen ")"
+; nextln: 2:43 Symbol "é😀"
+; nextln: 2:49 RParen ")"
+;; line comment
+(; block (; nested ;) comment ;)
+(rule (f x@(g _) 0xff -12 1_000 0b101 0o7) é😀)

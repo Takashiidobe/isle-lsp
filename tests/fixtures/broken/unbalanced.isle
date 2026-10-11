@@ -1,0 +1,61 @@
+; mode: syntax-tree
+; check: === syntax-tree ===
+; nextln: form decl @0:0..0:26 closed
+; nextln: symbol decl @0:1
+; nextln: symbol first @0:6
+; nextln: list @0:12..0:19
+; nextln: symbol Value @0:13
+; nextln: symbol Value @0:20
+; nextln: form rule @1:0..1:23 unclosed
+; nextln: symbol rule @1:1
+; nextln: list @1:6..1:23 unclosed
+; nextln: symbol first @1:7
+; nextln: list @1:13..1:23
+; nextln: symbol iadd @1:14
+; nextln: symbol x @1:19
+; nextln: symbol y @1:21
+; nextln: form decl @2:0..2:27 closed
+; nextln: symbol decl @2:1
+; nextln: symbol second @2:6
+; nextln: list @2:13..2:20
+; nextln: symbol Value @2:14
+; nextln: symbol Value @2:21
+; nextln: form rule @3:0..3:19 closed
+; nextln: symbol rule @3:1
+; nextln: list @3:6..3:16
+; nextln: symbol second @3:7
+; nextln: symbol x @3:14
+; nextln: symbol x @3:17
+; nextln: symbol stray @5:0
+; nextln: form unknown @6:0..6:14 closed
+; nextln: symbol frobnicate @6:1
+; nextln: symbol x @6:12
+; nextln: form unknown @7:0..7:2 closed
+; nextln: form unknown @8:0..8:5 closed
+; nextln: int 1 @8:1
+; nextln: int 2 @8:3
+; nextln: form rule @9:0..9:15 unclosed
+; nextln: symbol rule @9:1
+; nextln: list @9:6..9:15
+; nextln: symbol third @9:7
+; nextln: symbol x @9:13
+; nextln: error 1:0..1:1 unclosed `(`
+; nextln: error 1:6..1:7 unclosed `(`
+; nextln: error 3:19..3:20 unmatched `)`
+; nextln: error 4:0..4:1 unmatched `)`
+; nextln: error 5:0..5:5 expected a form, found a bare token
+; nextln: error 6:1..6:11 unknown form `frobnicate`
+; nextln: error 7:0..7:2 empty form
+; nextln: error 8:1..8:2 expected a form name
+; nextln: error 9:0..9:1 unclosed `(`
+; nextln: comments 0
+(decl first (Value) Value)
+(rule (first (iadd x y)
+(decl second (Value) Value)
+(rule (second x) x))
+)
+stray
+(frobnicate x)
+()
+(1 2)
+(rule (third x)

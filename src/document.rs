@@ -1,18 +1,26 @@
 use ropey::Rope;
 use tower_lsp_server::ls_types::{Position, Range};
 
+use crate::parser;
+use crate::syntax::File;
+
 pub struct Document {
     rope: Rope,
     text: String,
+    file: File,
 }
 
 impl Document {
     pub fn new(text: &str) -> Self {
-        Self { rope: Rope::from_str(text), text: text.to_owned() }
+        Self { rope: Rope::from_str(text), text: text.to_owned(), file: parser::parse(text) }
     }
 
     pub fn text(&self) -> &str {
         &self.text
+    }
+
+    pub fn file(&self) -> &File {
+        &self.file
     }
 
     pub fn apply(&mut self, range: Option<Range>, replacement: &str) {
@@ -26,6 +34,7 @@ impl Document {
             }
         }
         self.text = self.rope.to_string();
+        self.file = parser::parse(&self.text);
     }
 
     pub fn position(&self, offset: usize) -> Position {

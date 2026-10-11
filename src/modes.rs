@@ -1,6 +1,9 @@
 use tower_lsp_server::ls_types::{Position, Range};
 
 use crate::document::Document;
+use crate::lexer::{self, TokenKind};
+use crate::parser;
+use crate::syntax::{self, AtomKind, FormKind, Node, Span};
 
 pub struct Query {
     pub line: usize,
@@ -17,8 +20,88 @@ pub struct Input<'a> {
 pub fn render(mode: &str, input: &Input) -> Result<String, String> {
     match mode {
         "document" => render_document(input),
+        "tokens" => Ok(render_tokens(&plain_text(input.source))),
+        "syntax-tree" => Ok(render_syntax_tree(&plain_text(input.source))),
         "source" => Ok(plain_text(input.source)),
         _ => Err(format!("unknown mode `{mode}`")),
+    }
+}
+
+struct Positions {
+    line_starts: Vec<usize>,
+}
+
+impl Positions {
+    fn new(source: &str) -> Positions {
+        let mut line_starts = vec![0];
+        line_starts.extend(source.match_indices('\n').map(|(i, _)| i + 1));
+        Positions { line_starts }
+    }
+
+    fn at(&self, byte: usize) -> String {
+        let line = self.line_starts.partition_point(|&s| s <= byte) - 1;
+        format!("{line}:{}", byte - self.line_starts[line])
+    }
+
+    fn range(&self, span: Span) -> String {
+        format!("{}..{}", self.at(span.start), self.at(span.end))
+    }
+}
+
+fn render_tokens(source: &str) -> String {
+    let lexed = lexer::lex(source);
+    let pos = Positions::new(source);
+    let mut out = String::new();
+    for token in lexed.tokens.iter().filter(|t| !matches!(t.kind, TokenKind::Whitespace | TokenKind::Newline)) {
+        out.push_str(&format!("{} {:?} {:?}\n", pos.at(token.start), token.kind, token.text(source)));
+    }
+    for error in &lexed.errors {
+        out.push_str(&format!("error {} {}\n", pos.range(error.span), error.message));
+    }
+    out
+}
+
+fn render_syntax_tree(source: &str) -> String {
+    let file = parser::parse(source);
+    let pos = Positions::new(source);
+    let mut out = String::new();
+    for node in &file.items {
+        if let Node::List(list) = node {
+            let kind = syntax::form_kind(source, list).map_or("unknown", FormKind::keyword);
+            let state = if list.closed { "closed" } else { "unclosed" };
+            out.push_str(&format!("form {kind} @{} {state}\n", pos.range(list.span)));
+            for item in &list.items {
+                render_node(source, &pos, item, 1, &mut out);
+            }
+        } else {
+            render_node(source, &pos, node, 0, &mut out);
+        }
+    }
+    for error in &file.errors {
+        out.push_str(&format!("error {} {}\n", pos.range(error.span), error.message));
+    }
+    out.push_str(&format!("comments {}\n", file.comments.len()));
+    out
+}
+
+fn render_node(source: &str, pos: &Positions, node: &Node, depth: usize, out: &mut String) {
+    let indent = "  ".repeat(depth);
+    match node {
+        Node::Atom(atom) => {
+            let kind = match atom.kind {
+                AtomKind::Symbol => "symbol",
+                AtomKind::Int => "int",
+                AtomKind::At => "at",
+            };
+            out.push_str(&format!("{indent}{kind} {} @{}\n", atom.span.text(source), pos.at(atom.span.start)));
+        }
+        Node::List(list) => {
+            let state = if list.closed { "" } else { " unclosed" };
+            out.push_str(&format!("{indent}list @{}{state}\n", pos.range(list.span)));
+            for item in &list.items {
+                render_node(source, pos, item, depth + 1, out);
+            }
+        }
     }
 }
 

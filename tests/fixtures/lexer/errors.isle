@@ -1,0 +1,15 @@
+; mode: tokens
+; check: === tokens ===
+; nextln: 0:0 LParen "("
+; nextln: 0:1 Symbol "f"
+; nextln: 0:3 Int "0x"
+; nextln: 0:6 Int "12"
+; nextln: 0:8 Symbol "z"
+; nextln: 0:10 Int "-"
+; nextln: 0:12 Int "99999999999999999999999999999999999999999"
+; nextln: 0:54 BlockComment "(; open"
+; nextln: error 0:3..0:5 cannot parse integer from empty string
+; nextln: error 0:10..0:11 cannot parse integer from empty string
+; nextln: error 0:12..0:53 number too large to fit in target type
+; nextln: error 0:54..0:56 unterminated block comment
+(f 0x 12z - 99999999999999999999999999999999999999999 (; open

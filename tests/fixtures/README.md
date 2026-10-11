@@ -19,7 +19,16 @@ Modes live in `src/modes.rs`.
 - `document`: `at` queries print the UTF-16 column and the round-trip byte
   column for a position. `edit L:C-L:C text` queries apply incremental edits in
   order (`\n` in `text` is a newline) and print the final text.
+- `tokens`: one `L:C Kind "text"` line per non-whitespace token, then lexer
+  errors as `error L:C..L:C message`.
+- `syntax-tree`: one `form <keyword> @range closed|unclosed` line per top-level
+  form with its nodes indented below, then syntax errors and the comment count.
+  Fixtures under `broken/` exercise error recovery.
 - `source`: the text with directives and queries removed.
+
+Every fixture also runs through the invariants in `tests/harness/invariants.rs`:
+tokens tile the input with no gaps, every span lies on character boundaries, and
+the parser must not panic on any prefix of the file.
 
 `tools/update_filecheck.py [globs]` rewrites the checks of failing fixtures from
 their actual output, in place. Globs are relative to this directory and a
