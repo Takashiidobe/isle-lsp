@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use tower_lsp_server::ls_types::{Position, Range};
+use tower_lsp_server::ls_types::{DiagnosticSeverity, NumberOrString, Position, Range};
 
+use crate::diagnostics;
 use crate::document::Document;
 use crate::lexer::{self, TokenKind};
 use crate::parser;
@@ -25,6 +26,7 @@ pub struct Input<'a> {
 pub fn render(mode: &str, input: &Input) -> Result<String, String> {
     match mode {
         "project" => Ok(render_project(input)),
+        "diagnostics" => Ok(render_diagnostics(input)),
         "document" => render_document(input),
         "tokens" => Ok(render_tokens(&plain_text(input.source))),
         "syntax-tree" => Ok(render_syntax_tree(&plain_text(input.source))),
@@ -33,8 +35,7 @@ pub fn render(mode: &str, input: &Input) -> Result<String, String> {
     }
 }
 
-fn render_project(input: &Input) -> String {
-    let relative = |path: &Path| path.strip_prefix(input.root).unwrap_or(path).display().to_string();
+fn load_project(input: &Input) -> (project::Project, project::Loaded) {
     let project = project::discover(input.path, Some(input.root));
     let overrides: Vec<(PathBuf, String)> = input
         .queries
@@ -46,6 +47,63 @@ fn render_project(input: &Input) -> String {
         })
         .collect();
     let loaded = project.load(|path| overrides.iter().find(|(p, _)| p == path).map(|(_, text)| text.clone()));
+    (project, loaded)
+}
+
+fn render_diagnostics(input: &Input) -> String {
+    let relative = |path: &Path| path.strip_prefix(input.root).unwrap_or(path).display().to_string();
+    let (project, loaded) = load_project(input);
+    let text_of = |path: &Path| loaded.sources.iter().find(|s| s.path == path).map(|s| s.text.as_str()).unwrap_or("");
+    let range = |path: &Path, range: Range| {
+        let text = text_of(path);
+        let (start, end) = (plain_position(text, range.start), plain_position(text, range.end));
+        format!("{}:{}..{}:{}", start.0, start.1, end.0, end.1)
+    };
+    let root_prefix = format!("{}/", input.root.display());
+    let mut out = String::new();
+    for file in diagnostics::all(&project, &loaded) {
+        for diagnostic in &file.diagnostics {
+            let severity = match diagnostic.severity {
+                Some(DiagnosticSeverity::ERROR) => "error",
+                Some(DiagnosticSeverity::WARNING) => "warning",
+                Some(DiagnosticSeverity::INFORMATION) => "info",
+                _ => "hint",
+            };
+            let code = match &diagnostic.code {
+                Some(NumberOrString::String(code)) => code.as_str(),
+                _ => "",
+            };
+            out.push_str(&format!(
+                "{} {} {severity}[{code}] {}\n",
+                relative(&file.path),
+                range(&file.path, diagnostic.range),
+                diagnostic.message.replace(&root_prefix, "")
+            ));
+            for related in diagnostic.related_information.iter().flatten() {
+                let path = related.location.uri.to_file_path().map(|p| p.into_owned()).unwrap_or_default();
+                out.push_str(&format!(
+                    "  related {} {} {}\n",
+                    relative(&path),
+                    range(&path, related.location.range),
+                    related.message
+                ));
+            }
+        }
+    }
+    if out.is_empty() {
+        out.push_str("no diagnostics\n");
+    }
+    out
+}
+
+fn plain_position(text: &str, position: Position) -> (usize, u32) {
+    let plain_line = text.lines().take(position.line as usize).filter(|l| !is_directive(l) && !is_caret(l)).count();
+    (plain_line, position.character)
+}
+
+fn render_project(input: &Input) -> String {
+    let relative = |path: &Path| path.strip_prefix(input.root).unwrap_or(path).display().to_string();
+    let (project, loaded) = load_project(input);
 
     let origin = match &project.origin {
         project::Origin::Config(path) => format!("config {}", relative(path)),

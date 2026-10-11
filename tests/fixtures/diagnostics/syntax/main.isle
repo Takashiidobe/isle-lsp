@@ -1,0 +1,11 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/syntax/main.isle 1:0..1:1 error[syntax] unclosed `(`
+; nextln: diagnostics/syntax/main.isle 3:0..3:1 error[syntax] unmatched `)`
+; nextln: diagnostics/syntax/main.isle 4:1..4:11 error[syntax] unknown form `frobnicate`
+(type Value (primitive Value))
+(decl simplify (Value) Value
+(rule (simplify x) x)
+)
+(frobnicate)
+(rule (simplify y) (undefined_term y))

@@ -1,0 +1,12 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/shadowed/main.isle 7:0..7:33 error[shadowed] this rule can never match: a higher-priority, more general rule always matches first
+; nextln: related diagnostics/shadowed/main.isle 6:0..6:23 shadowed by this rule
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl pure double (Value) Value)
+(extern constructor double double)
+(decl partial double_of (Value) Value)
+(extern extractor double_of double_of)
+(rule 1 (simplify x) x)
+(rule (simplify (double_of y)) y)

@@ -1,0 +1,6 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/recursion/main.isle 0:6..0:11 error[recursion] Term is recursive but does not have the `rec` attribute
+(decl count (u64) u64)
+(rule 1 (count 0) 0)
+(rule (count n) (count n))

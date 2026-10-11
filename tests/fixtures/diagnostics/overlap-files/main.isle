@@ -1,0 +1,5 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/overlap-files/prelude.isle 2:0..2:21 error[overlap] rules are overlapping
+; nextln: related diagnostics/overlap-files/main.isle 0:0..0:21 overlaps with this rule
+(rule (simplify x) x)

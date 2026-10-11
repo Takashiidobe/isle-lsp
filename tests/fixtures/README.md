@@ -32,6 +32,12 @@ Modes live in `src/modes.rs`.
   an open buffer for `path` (`\n` is a newline), overriding the file on disk.
   Fixtures live in directory trees under `project/`; files without a `mode:` line
   are just members of the tree.
+- `diagnostics`: analyses the whole project of the fixture file, with `open`
+  queries as in `project`, and prints one line per diagnostic as
+  `path L:C..L:C severity[code] message`, plus indented `related` lines. Lines
+  ignore directive and query lines and columns are UTF-16. Because sibling
+  files form a project, each diagnostics fixture lives in its own directory
+  under `diagnostics/`.
 - `source`: the text with directives and queries removed.
 
 Every fixture also runs through the invariants in `tests/harness/invariants.rs`:

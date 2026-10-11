@@ -35,6 +35,7 @@ pub struct Project {
     pub name: Option<String>,
     pub files: Vec<PathBuf>,
     pub notes: Vec<String>,
+    pub incomplete: bool,
 }
 
 pub struct Source {
@@ -80,7 +81,7 @@ pub fn discover(file: &Path, boundary: Option<&Path>) -> Project {
             Ok(Some(project)) => return project,
             Ok(None) => {
                 notes.push(format!("{CONFIG_NAME} does not list this file"));
-                return Project { origin: Origin::Single, name: None, files: vec![file], notes };
+                return Project { origin: Origin::Single, name: None, files: vec![file], notes, incomplete: false };
             }
             Err(note) => notes.push(note),
         }
@@ -104,6 +105,7 @@ fn from_config(config: &Path, file: &Path) -> Result<Option<Project>, String> {
                 name: set.name,
                 files,
                 notes: Vec::new(),
+                incomplete: false,
             }));
         }
     }
@@ -151,7 +153,7 @@ fn siblings(file: &Path) -> Project {
     }
     files.sort();
     let origin = if files.len() == 1 { Origin::Single } else { Origin::Siblings };
-    Project { origin, name: None, files, notes: Vec::new() }
+    Project { origin, name: None, files, notes: Vec::new(), incomplete: false }
 }
 
 fn cranelift_opt(file: &Path, boundary: Option<&Path>) -> Option<Project> {
@@ -166,14 +168,16 @@ fn cranelift_opt(file: &Path, boundary: Option<&Path>) -> Option<Project> {
     let mut files = preludes.to_vec();
     files.extend(rules);
     let mut notes = Vec::new();
-    match src.parent().and_then(|crate_dir| generated_isle(crate_dir, boundary)) {
+    let generated = src.parent().and_then(|crate_dir| generated_isle(crate_dir, boundary));
+    let incomplete = generated.is_none();
+    match generated {
         Some(generated) => files.extend(generated),
         None => notes.push("generated numerics.isle and clif_opt.isle not found, build cranelift-codegen or list them in isle-lsp.toml".to_owned()),
     }
     if !files.iter().any(|f| f == file) {
         files.push(file.to_owned());
     }
-    Some(Project { origin: Origin::CraneliftOpt, name: Some("opt".to_owned()), files, notes })
+    Some(Project { origin: Origin::CraneliftOpt, name: Some("opt".to_owned()), files, notes, incomplete })
 }
 
 fn generated_isle(crate_dir: &Path, boundary: Option<&Path>) -> Option<Vec<PathBuf>> {

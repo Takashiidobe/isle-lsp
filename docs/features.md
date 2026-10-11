@@ -9,6 +9,34 @@ converts LSP UTF-16 positions to byte offsets. Every edit re-parses the
 document with a tolerant parser that recovers from unbalanced parentheses, so
 one error does not hide the rest of the file.
 
+## Diagnostics
+
+Diagnostics update on every edit and cover every file of the project, open or
+not. They come in layers, and a later layer only runs when the earlier one is
+clean:
+
+1. **Syntax errors** (`syntax`): unclosed or unmatched parentheses, bare tokens
+   at the top level, unknown form names, empty forms, bad integer literals, and
+   unterminated block comments. The parser recovers at the next line-start
+   `(decl`, `(rule` and so on, so one missing parenthesis does not hide the rest
+   of the file.
+2. **Semantic checks** from `cranelift-isle` 0.136.2, run over the whole project
+   with the same code the Cranelift build uses:
+   - `parse`: what the upstream parser rejects, such as a rule with no
+     right-hand side.
+   - `type`: unknown types and terms, wrong argument counts, type mismatches,
+     terms used on the wrong side of a rule.
+   - `overlap`: two rules that match the same input at the same priority. The
+     diagnostic covers the whole rule, and the other rules are attached as
+     related locations, including rules in other files.
+   - `shadowed` and `unreachable`: a rule that can never match.
+   - `recursion`: a term that recurses without the `rec` attribute.
+
+If a file the project lists is missing, or the project is a Cranelift mid-end
+set without its generated `numerics.isle` and `clif_opt.isle`, semantic checks
+are skipped and an `incomplete-project` warning explains why. Checking without
+the generated files would report every CLIF term as unknown.
+
 ## Project files
 
 ISLE files only make sense together, so the server groups them into a project

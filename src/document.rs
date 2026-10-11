@@ -4,6 +4,15 @@ use tower_lsp_server::ls_types::{Position, Range};
 use crate::parser;
 use crate::syntax::File;
 
+pub fn position_in(text: &str, offset: usize) -> Position {
+    let offset = offset.min(text.len());
+    let before = &text[..text.floor_char_boundary(offset)];
+    let line = before.matches('\n').count();
+    let line_start = before.rfind('\n').map_or(0, |i| i + 1);
+    let col = before[line_start..].encode_utf16().count();
+    Position::new(line as u32, col as u32)
+}
+
 pub struct Document {
     rope: Rope,
     text: String,

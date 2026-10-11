@@ -1,3 +1,4 @@
+pub mod diagnostics;
 pub mod document;
 pub mod lexer;
 pub mod modes;

@@ -1,0 +1,8 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/overlap/main.isle 3:0..3:21 error[overlap] rules are overlapping
+; nextln: related diagnostics/overlap/main.isle 2:0..2:21 overlaps with this rule
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(rule (simplify x) x)
+(rule (simplify y) y)

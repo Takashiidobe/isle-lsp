@@ -1,0 +1,6 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/parse/main.isle 2:18..2:19 error[parse] Invalid expression
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(rule (simplify x))

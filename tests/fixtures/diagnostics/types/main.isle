@@ -1,0 +1,15 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/types/main.isle 3:19..3:30 error[type] Unknown term in expression: 'missing'
+; nextln: diagnostics/types/main.isle 4:19..4:28 error[type] Mismatched types: expression expects type 'Value' but term has return type 'u64'
+; nextln: diagnostics/types/main.isle 4:26..4:27 error[type] Variable 'x' has type Value but we need u64 in context
+; nextln: diagnostics/types/main.isle 5:16..5:30 error[type] Incorrect argument count for term 'simplify': got 2, expect 1
+; nextln: diagnostics/types/main.isle 5:16..5:30 error[type] Cannot use term 'simplify' that does not have a defined extractor in a left-hand side pattern
+; nextln: diagnostics/types/main.isle 2:6..2:10 error[type] no rules, extractor, or external definition for declaration 'bytes'
+; nextln: diagnostics/types/main.isle 4:19..4:28 error[type] term `bytes` cannot be used in an expression because it does not have a constructor
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl pure bytes (u64) u64)
+(rule (simplify x) (missing x))
+(rule (simplify x) (bytes x))
+(rule (simplify (simplify x y)) x)

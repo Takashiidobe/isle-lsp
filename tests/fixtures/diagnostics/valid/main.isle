@@ -1,0 +1,8 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: no diagnostics
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl pure double (Value) Value)
+(extern constructor double double)
+(rule (simplify x) (double x))

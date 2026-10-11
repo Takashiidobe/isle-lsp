@@ -1,0 +1,5 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/unicode/main.isle 0:21..0:24 error[syntax] expected a form, found a bare token
+; nextln: diagnostics/unicode/main.isle 0:25..0:26 error[syntax] unmatched `)`
+(decl é😀 (u64) u64) é😀 )

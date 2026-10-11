@@ -1,0 +1,4 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/missing-file/main.isle 0:0..0:0 warning[incomplete-project] semantic checks skipped: project file diagnostics/missing-file/absent.isle was not found
+(decl simplify (Value) Value)

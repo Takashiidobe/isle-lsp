@@ -1,0 +1,7 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/types-decl/main.isle 1:14..1:18 error[type] Unknown arg type: 'Nope'
+; nextln: diagnostics/types-decl/main.isle 2:20..2:24 error[type] Unknown return type: 'Gone'
+(type Value (primitive Value))
+(decl helper (Nope) Value)
+(decl other (Value) Gone)
