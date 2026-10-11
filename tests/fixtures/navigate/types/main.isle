@@ -1,0 +1,30 @@
+; mode: navigate
+; check: === navigate ===
+; nextln: rename 4:21 Tiny
+; nextln: navigate/types/main.isle 1:17..1:22 => "Tiny"
+; nextln: navigate/types/main.isle 4:25..4:30 => "Tiny"
+; nextln: prepare 4:21
+; nextln: navigate/types/main.isle 4:25..4:30
+; nextln: definition 4:21
+; nextln: navigate/types/main.isle 1:17..1:22
+; nextln: rename 5:14 Shape
+; nextln: navigate/types/main.isle 1:6..1:10 => "Shape"
+; nextln: navigate/types/main.isle 2:23..2:27 => "Shape"
+; nextln: navigate/types/main.isle 3:20..3:24 => "Shape"
+; nextln: navigate/types/main.isle 4:20..4:24 => "Shape"
+; nextln: navigate/types/main.isle 5:14..5:18 => "Shape"
+; nextln: references 5:14
+; nextln: navigate/types/main.isle 1:6..1:10
+; nextln: navigate/types/main.isle 2:23..2:27
+; nextln: navigate/types/main.isle 5:14..5:18
+(type Value (primitive Value))
+(type Kind (enum Small (Big (size Value))))
+(decl classify (Value) Kind)
+(rule (classify x) (Kind.Big x))
+(rule (classify y) (Kind.Small))
+;                    ^ rename Tiny
+;                    ^ prepare
+;                    ^ definition
+(decl is_big (Kind) Value)
+;             ^ rename Shape
+;             ^ references

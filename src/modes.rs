@@ -7,6 +7,7 @@ use crate::diagnostics;
 use crate::document::Document;
 use crate::index;
 use crate::lexer::{self, TokenKind};
+use crate::navigation;
 use crate::parser;
 use crate::project;
 use crate::syntax::{self, AtomKind, FormKind, Node, Span};
@@ -30,6 +31,7 @@ pub fn render(mode: &str, input: &Input) -> Result<String, String> {
         "project" => Ok(render_project(input)),
         "diagnostics" => Ok(render_diagnostics(input)),
         "resolve" => Ok(render_resolve(input)),
+        "navigate" => Ok(render_navigate(input)),
         "document" => render_document(input),
         "tokens" => Ok(render_tokens(&plain_text(input.source))),
         "syntax-tree" => Ok(render_syntax_tree(&plain_text(input.source))),
@@ -111,21 +113,76 @@ fn render_diagnostics(input: &Input) -> String {
     out
 }
 
-fn render_resolve(input: &Input) -> String {
-    let relative = |path: &Path| path.strip_prefix(input.root).unwrap_or(path).display().to_string();
+fn locate(input: &Input, loaded: &project::Loaded, file: usize, offset: usize) -> String {
+    let source = &loaded.sources[file];
+    let line = source.text[..offset].matches('\n').count();
+    let skipped = source.text.lines().take(line).filter(|l| is_directive(l) || is_caret(l)).count();
+    let column = offset - source.text[..offset].rfind('\n').map_or(0, |newline| newline + 1);
+    let path = source.path.strip_prefix(input.root).unwrap_or(&source.path).display();
+    format!("{path} {}:{column}", line - skipped)
+}
+
+fn locate_span(input: &Input, loaded: &project::Loaded, place: navigation::Place) -> String {
+    let start = locate(input, loaded, place.file, place.span.start);
+    let end = locate(input, loaded, place.file, place.span.end);
+    let (_, end) = end.split_once(' ').unwrap_or_default();
+    format!("{start}..{end}")
+}
+
+fn render_navigate(input: &Input) -> String {
     let (_, loaded) = load_project(input);
     let index = index::Index::build(&loaded);
     let here = project::normalize(input.path);
     let Some(file) = loaded.sources.iter().position(|source| source.path == here) else {
         return "fixture file is not part of its project\n".to_owned();
     };
-    let at = |file: usize, offset: usize| {
-        let text = &loaded.sources[file].text;
-        let line = text[..offset].matches('\n').count();
-        let skipped = text.lines().take(line).filter(|l| is_directive(l) || is_caret(l)).count();
-        let column = offset - text[..offset].rfind('\n').map_or(0, |newline| newline + 1);
-        format!("{} {}:{column}", relative(&loaded.sources[file].path), line - skipped)
+    let mut line_starts = vec![0];
+    line_starts.extend(input.source.match_indices('\n').map(|(i, _)| i + 1));
+    let mut out = String::new();
+    for query in input.queries.iter().filter(|q| q.kind != "open") {
+        let offset = line_starts[query.line] + query.col;
+        let skipped = input.source.lines().take(query.line).filter(|l| is_directive(l) || is_caret(l)).count();
+        out.push_str(&format!("{} {}:{}", query.kind, query.line - skipped, query.col));
+        if !query.args.is_empty() {
+            out.push_str(&format!(" {}", query.args));
+        }
+        out.push('\n');
+        let places = |places: Vec<navigation::Place>, out: &mut String| {
+            if places.is_empty() {
+                out.push_str("  none\n");
+            }
+            for place in places {
+                out.push_str(&format!("  {}\n", locate_span(input, &loaded, place)));
+            }
+        };
+        match query.kind.as_str() {
+            "definition" => places(navigation::definition(&index, file, offset).into_iter().collect(), &mut out),
+            "references" => places(navigation::references(&index, file, offset, true), &mut out),
+            "uses" => places(navigation::references(&index, file, offset, false), &mut out),
+            "highlight" => places(navigation::highlights(&index, file, offset), &mut out),
+            "prepare" => places(navigation::prepare_rename(&index, &loaded, file, offset).into_iter().collect(), &mut out),
+            "rename" => match navigation::rename(&index, &loaded, file, offset, query.args.trim()) {
+                Ok(edits) => {
+                    for edit in edits {
+                        out.push_str(&format!("  {} => {:?}\n", locate_span(input, &loaded, edit.place), edit.new_text));
+                    }
+                }
+                Err(message) => out.push_str(&format!("  error: {message}\n")),
+            },
+            other => out.push_str(&format!("  unknown query `{other}`\n")),
+        }
+    }
+    out
+}
+
+fn render_resolve(input: &Input) -> String {
+    let (_, loaded) = load_project(input);
+    let index = index::Index::build(&loaded);
+    let here = project::normalize(input.path);
+    let Some(file) = loaded.sources.iter().position(|source| source.path == here) else {
+        return "fixture file is not part of its project\n".to_owned();
     };
+    let at = |file: usize, offset: usize| locate(input, &loaded, file, offset);
     let mut line_starts = vec![0];
     line_starts.extend(input.source.match_indices('\n').map(|(i, _)| i + 1));
     let mut out = String::new();

@@ -1,0 +1,19 @@
+; mode: navigate
+; check: === navigate ===
+; nextln: definition 1:18
+; nextln: navigate/cross-file/a.isle 1:6..1:14
+; nextln: references 1:18
+; nextln: navigate/cross-file/a.isle 1:6..1:14
+; nextln: navigate/cross-file/a.isle 2:7..2:15
+; nextln: navigate/cross-file/b.isle 1:17..1:25
+; nextln: navigate/cross-file/b.isle 1:27..1:35
+; nextln: rename 1:18 reduce
+; nextln: navigate/cross-file/a.isle 1:6..1:14 => "reduce"
+; nextln: navigate/cross-file/a.isle 2:7..2:15 => "reduce"
+; nextln: navigate/cross-file/b.isle 1:17..1:25 => "reduce"
+; nextln: navigate/cross-file/b.isle 1:27..1:35 => "reduce"
+(decl twice (Value) Value)
+(rule (twice x) (simplify (simplify x)))
+;                 ^ definition
+;                 ^ references
+;                 ^ rename reduce

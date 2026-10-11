@@ -1,0 +1,41 @@
+; mode: navigate
+; check: === navigate ===
+; nextln: definition 4:8
+; nextln: navigate/terms/main.isle 1:6..1:14
+; nextln: references 4:8
+; nextln: navigate/terms/main.isle 1:6..1:14
+; nextln: navigate/terms/main.isle 4:7..4:15
+; nextln: navigate/terms/main.isle 5:7..5:15
+; nextln: uses 4:8
+; nextln: navigate/terms/main.isle 4:7..4:15
+; nextln: navigate/terms/main.isle 5:7..5:15
+; nextln: highlight 4:8
+; nextln: navigate/terms/main.isle 1:6..1:14
+; nextln: navigate/terms/main.isle 4:7..4:15
+; nextln: navigate/terms/main.isle 5:7..5:15
+; nextln: prepare 4:8
+; nextln: navigate/terms/main.isle 4:7..4:15
+; nextln: rename 4:8 reduce
+; nextln: navigate/terms/main.isle 1:6..1:14 => "reduce"
+; nextln: navigate/terms/main.isle 4:7..4:15 => "reduce"
+; nextln: navigate/terms/main.isle 5:7..5:15 => "reduce"
+; nextln: rename 4:19 y
+; nextln: error: nothing to rename here
+; nextln: highlight 4:20
+; nextln: navigate/terms/main.isle 2:11..2:17
+; nextln: navigate/terms/main.isle 3:20..3:26
+; nextln: navigate/terms/main.isle 4:20..4:26
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl pure double (Value) Value)
+(extern constructor double double)
+(rule (simplify x) (double x))
+;       ^ definition
+;       ^ references
+;       ^ uses
+;       ^ highlight
+;       ^ prepare
+;       ^ rename reduce
+;                  ^ rename y
+;                   ^ highlight
+(rule (simplify z) z)

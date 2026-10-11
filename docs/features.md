@@ -39,6 +39,24 @@ set without its generated `numerics.isle` and `clif_opt.isle`, semantic checks
 are skipped and an `incomplete-project` warning explains why. Checking without
 the generated files would report every CLIF term as unknown.
 
+## Navigation
+
+Go to definition, find references, document highlight and rename work on terms,
+types, enum variants, constants, macros, named rules and pattern or `let`
+variables, across every file of the project. Variables follow ISLE scoping: a
+repeated name in a pattern is the same binding, and a `let` binding shadows
+earlier ones in its body only.
+
+Terms keep their roles apart in the index: a call in a right-hand side, a match
+in a pattern (an extractor use), a rule head, and an `extern` or `extractor`
+implementation all resolve to the term's `decl`.
+
+Rename validates the new name. It rejects names that are not valid symbols,
+`$`-prefixed names for anything but constants, a variable named `_`, and names
+that clash with an existing definition, including one of a different kind.
+Renaming a type also rewrites the `Type.` prefix of its variants, and renaming
+a variant keeps the type prefix.
+
 ## Project files
 
 ISLE files only make sense together, so the server groups them into a project

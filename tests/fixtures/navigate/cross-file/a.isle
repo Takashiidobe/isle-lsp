@@ -1,0 +1,3 @@
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(rule (simplify x) x)

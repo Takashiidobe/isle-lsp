@@ -45,6 +45,13 @@ Modes live in `src/modes.rs`.
   (extractor use in a pattern), `rule-head`, `impl` (`extern` and `extractor`
   forms), `attr`, `const` and `variable`. Cursors on nothing print `unresolved`.
   Each fixture lives in its own directory, as for `diagnostics`.
+- `navigate`: runs navigation queries against the same index. Each query
+  echoes as `kind L:C [args]` and is followed by indented `path L:C..L:C`
+  results, or `none`. Kinds are `definition`, `references` (with the
+  declaration), `uses` (without it), `highlight` (current file only),
+  `prepare` (prepare-rename range) and `rename <new name>`, which lists
+  `range => "text"` edits or `error: message`. Each fixture lives in its own
+  directory.
 - `source`: the text with directives and queries removed.
 
 Every fixture also runs through the invariants in `tests/harness/invariants.rs`:

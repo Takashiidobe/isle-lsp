@@ -3,22 +3,45 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
-use tower_lsp_server::jsonrpc::Result;
+use tower_lsp_server::jsonrpc::{Error, Result};
 use tower_lsp_server::ls_types::{
     CodeActionOrCommand, CodeActionParams, CodeActionProviderCapability, CodeActionResponse, Diagnostic,
-    DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
-    InitializeParams, InitializeResult, ServerCapabilities, ServerInfo, TextDocumentSyncCapability,
-    TextDocumentSyncKind, Uri,
+    DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DocumentHighlight,
+    DocumentHighlightKind, DocumentHighlightParams, GotoDefinitionParams, GotoDefinitionResponse, InitializeParams,
+    InitializeResult, Location, OneOf, Position, PrepareRenameResponse, Range, ReferenceParams, RenameOptions,
+    RenameParams, ServerCapabilities, ServerInfo, TextDocumentPositionParams, TextDocumentSyncCapability,
+    TextDocumentSyncKind, TextEdit, Uri, WorkDoneProgressOptions, WorkspaceEdit,
 };
 use tower_lsp_server::{Client, ClientSocket, LanguageServer, LspService};
 
 use crate::actions;
 use crate::diagnostics;
-use crate::document::Document;
-use crate::project::{self, Project};
+use crate::document::{Document, position_in};
+use crate::index::Index;
+use crate::navigation::{self, Place};
+use crate::project::{self, Loaded, Project};
 
 pub fn service() -> (LspService<Backend>, ClientSocket) {
     LspService::build(Backend::new).finish()
+}
+
+struct Analysis {
+    loaded: Loaded,
+    index: Index,
+    file: usize,
+    offset: usize,
+}
+
+impl Analysis {
+    fn location(&self, place: Place) -> Option<Location> {
+        let source = &self.loaded.sources[place.file];
+        Some(Location::new(Uri::from_file_path(&source.path)?, self.range(place)))
+    }
+
+    fn range(&self, place: Place) -> Range {
+        let text = &self.loaded.sources[place.file].text;
+        Range::new(position_in(text, place.span.start), position_in(text, place.span.end))
+    }
 }
 
 pub struct Backend {
@@ -31,6 +54,21 @@ pub struct Backend {
 impl Backend {
     pub fn new(client: Client) -> Self {
         Self { client, documents: Arc::default(), projects: Arc::default(), published: Arc::default() }
+    }
+
+    async fn analyze(&self, uri: &Uri, position: Position) -> Option<Analysis> {
+        let documents = self.documents.read().await;
+        let projects = self.projects.read().await;
+        let open: HashMap<PathBuf, String> = documents
+            .iter()
+            .filter_map(|(uri, document)| Some((project::normalize(&uri.to_file_path()?), document.text().to_owned())))
+            .collect();
+        let loaded = projects.get(uri)?.load(|path| open.get(path).cloned());
+        let here = project::normalize(&uri.to_file_path()?);
+        let file = loaded.sources.iter().position(|source| source.path == here)?;
+        let offset = documents.get(uri)?.offset(position);
+        let index = Index::build(&loaded);
+        Some(Analysis { loaded, index, file, offset })
     }
 
     async fn refresh_diagnostics(&self) {
@@ -74,6 +112,13 @@ impl LanguageServer for Backend {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::INCREMENTAL)),
                 code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+                definition_provider: Some(OneOf::Left(true)),
+                references_provider: Some(OneOf::Left(true)),
+                document_highlight_provider: Some(OneOf::Left(true)),
+                rename_provider: Some(OneOf::Right(RenameOptions {
+                    prepare_provider: Some(true),
+                    work_done_progress_options: WorkDoneProgressOptions::default(),
+                })),
                 ..ServerCapabilities::default()
             },
             server_info: Some(ServerInfo { name: "isle-lsp".into(), version: Some(env!("CARGO_PKG_VERSION").into()) }),
@@ -83,6 +128,50 @@ impl LanguageServer for Backend {
 
     async fn shutdown(&self) -> Result<()> {
         Ok(())
+    }
+
+    async fn goto_definition(&self, params: GotoDefinitionParams) -> Result<Option<GotoDefinitionResponse>> {
+        let at = params.text_document_position_params;
+        let Some(analysis) = self.analyze(&at.text_document.uri, at.position).await else { return Ok(None) };
+        let place = navigation::definition(&analysis.index, analysis.file, analysis.offset);
+        Ok(place.and_then(|place| analysis.location(place)).map(GotoDefinitionResponse::Scalar))
+    }
+
+    async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
+        let at = params.text_document_position;
+        let Some(analysis) = self.analyze(&at.text_document.uri, at.position).await else { return Ok(None) };
+        let places = navigation::references(&analysis.index, analysis.file, analysis.offset, params.context.include_declaration);
+        Ok(Some(places.into_iter().filter_map(|place| analysis.location(place)).collect()))
+    }
+
+    async fn document_highlight(&self, params: DocumentHighlightParams) -> Result<Option<Vec<DocumentHighlight>>> {
+        let at = params.text_document_position_params;
+        let Some(analysis) = self.analyze(&at.text_document.uri, at.position).await else { return Ok(None) };
+        let places = navigation::highlights(&analysis.index, analysis.file, analysis.offset);
+        let highlights = places
+            .into_iter()
+            .map(|place| DocumentHighlight { range: analysis.range(place), kind: Some(DocumentHighlightKind::TEXT) })
+            .collect();
+        Ok(Some(highlights))
+    }
+
+    async fn prepare_rename(&self, params: TextDocumentPositionParams) -> Result<Option<PrepareRenameResponse>> {
+        let Some(analysis) = self.analyze(&params.text_document.uri, params.position).await else { return Ok(None) };
+        let place = navigation::prepare_rename(&analysis.index, &analysis.loaded, analysis.file, analysis.offset);
+        Ok(place.map(|place| PrepareRenameResponse::Range(analysis.range(place))))
+    }
+
+    async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
+        let at = params.text_document_position;
+        let Some(analysis) = self.analyze(&at.text_document.uri, at.position).await else { return Ok(None) };
+        let edits = navigation::rename(&analysis.index, &analysis.loaded, analysis.file, analysis.offset, &params.new_name)
+            .map_err(Error::invalid_params)?;
+        let mut changes: HashMap<Uri, Vec<TextEdit>> = HashMap::new();
+        for edit in edits {
+            let Some(location) = analysis.location(edit.place) else { continue };
+            changes.entry(location.uri).or_default().push(TextEdit { range: location.range, new_text: edit.new_text });
+        }
+        Ok(Some(WorkspaceEdit { changes: Some(changes), ..WorkspaceEdit::default() }))
     }
 
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {

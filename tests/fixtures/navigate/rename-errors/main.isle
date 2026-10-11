@@ -1,0 +1,42 @@
+; mode: navigate
+; check: === navigate ===
+; nextln: rename 5:7 two
+; nextln: error: `two` already exists: term two
+; nextln: rename 5:7 Value
+; nextln: error: `Value` clashes with a different kind of definition: type Value
+; nextln: rename 5:7 $$one
+; nextln: error: term names cannot start with `$$`
+; nextln: rename 5:7 (bad
+; nextln: error: `(bad` is not a valid ISLE symbol
+; nextln: rename 5:7 12
+; nextln: error: `12` is not a valid ISLE symbol
+; nextln: rename 5:7 one
+; nextln: error: the new name is the same as the old one
+; nextln: rename 5:12 x2
+; nextln: navigate/rename-errors/main.isle 5:11..5:12 => "x2"
+; nextln: navigate/rename-errors/main.isle 5:19..5:20 => "x2"
+; nextln: rename 5:17 Kind.Big
+; nextln: error: `Kind.Big` clashes with a different kind of definition: variant Kind.Big
+; nextln: rename 8:13 q
+; nextln: error: `q` already exists: variable q
+; nextln: rename 8:13 Kind.Small
+; nextln: error: `Kind.Small` clashes with a different kind of definition: variant Kind.Small
+(type Value (primitive Value))
+(type Kind (enum Small Big))
+(decl one (Value) Value)
+(decl two (Value) Value)
+(extern const $ZERO Value)
+(rule (one x) (two x))
+;      ^ rename two
+;      ^ rename Value
+;      ^ rename $one
+;      ^ rename (bad
+;      ^ rename 12
+;      ^ rename one
+;           ^ rename x2
+;                ^ rename Kind.Big
+(rule (two a) (one a))
+(decl three (Value Value) Value)
+(rule (three p q) p)
+;            ^ rename q
+;            ^ rename Kind.Small
