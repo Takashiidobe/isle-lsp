@@ -13,6 +13,7 @@ use crate::lexer::{self, TokenKind};
 use crate::navigation;
 use crate::parser;
 use crate::project;
+use crate::rules;
 use crate::semantic;
 use crate::symbols;
 use crate::syntax::{self, AtomKind, FormKind, Node, Span};
@@ -272,10 +273,35 @@ fn render_navigate(input: &Input) -> String {
                 }
                 Err(message) => out.push_str(&format!("  error: {message}\n")),
             },
+            "rules" => {
+                let ranked = index
+                    .resolve(file, offset)
+                    .filter(|&id| index.defs[id].kind == index::DefKind::Term)
+                    .map(|id| rules::for_term(&loaded, &index.defs[id].name))
+                    .unwrap_or_default();
+                ranked_rules(input, &loaded, &ranked, &mut out);
+            }
+            "clif" => {
+                let ranked = rules::for_clif(&loaded, &index, &query.args.replace("\\n", "\n"));
+                ranked_rules(input, &loaded, &ranked, &mut out);
+            }
             other => out.push_str(&format!("  unknown query `{other}`\n")),
         }
     }
     out
+}
+
+fn ranked_rules(input: &Input, loaded: &project::Loaded, ranked: &[rules::Ranked], out: &mut String) {
+    if ranked.is_empty() {
+        out.push_str("  none\n");
+    }
+    for rule in ranked {
+        let place = navigation::Place { file: rule.file, span: rule.span };
+        out.push_str(&format!("  priority {} {}\n", rule.priority, locate_span(input, loaded, place)));
+        for &(file, span) in &rule.wins_over {
+            out.push_str(&format!("    wins over {}\n", locate_span(input, loaded, navigation::Place { file, span })));
+        }
+    }
 }
 
 fn render_resolve(input: &Input) -> String {

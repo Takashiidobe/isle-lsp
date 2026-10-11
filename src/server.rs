@@ -2,10 +2,11 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tower_lsp_server::jsonrpc::{Error, Result};
 use tower_lsp_server::ls_types::{
-    CodeAction, CodeActionKind, CodeActionOrCommand, CodeActionParams, DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse,
+    CodeAction, CodeActionKind, CodeLens, CodeLensOptions, CodeLensParams, Command, TextDocumentIdentifier, CodeActionOrCommand, CodeActionParams, DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse,
     FoldingRange, FoldingRangeParams, FoldingRangeProviderCapability, SemanticToken, SemanticTokenModifier,
     SemanticTokenType, SemanticTokens, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
     SemanticTokensParams, SemanticTokensResult, SemanticTokensServerCapabilities, SymbolKind, WorkspaceSymbol,
@@ -26,7 +27,8 @@ use crate::completion::{self, ItemKind};
 use crate::diagnostics;
 use crate::document::{Document, position_in};
 use crate::hover;
-use crate::index::Index;
+use crate::index::{DefKind, Index};
+use crate::rules;
 use crate::inlay;
 use crate::navigation::{self, Place};
 use crate::project::{self, Loaded, Project};
@@ -35,7 +37,46 @@ use crate::symbols::{self, SymKind};
 use crate::syntax::Span;
 
 pub fn service() -> (LspService<Backend>, ClientSocket) {
-    LspService::build(Backend::new).finish()
+    LspService::build(Backend::new)
+        .custom_method("isle/rulesForTerm", Backend::rules_for_term)
+        .custom_method("isle/rulesForClif", Backend::rules_for_clif)
+        .finish()
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RulesForTermParams {
+    text_document: TextDocumentIdentifier,
+    position: Position,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RulesForClifParams {
+    text_document: TextDocumentIdentifier,
+    snippet: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RankedRule {
+    location: Location,
+    priority: i64,
+    wins_over: Vec<Location>,
+}
+
+fn ranked_rules(analysis: &Analysis, ranked: Vec<rules::Ranked>) -> Vec<RankedRule> {
+    let place = |file: usize, span: Span| analysis.location(Place { file, span });
+    ranked
+        .into_iter()
+        .filter_map(|rule| {
+            Some(RankedRule {
+                location: place(rule.file, rule.span)?,
+                priority: rule.priority,
+                wins_over: rule.wins_over.into_iter().filter_map(|(file, span)| place(file, span)).collect(),
+            })
+        })
+        .collect()
 }
 
 fn symbol_kind(kind: SymKind) -> SymbolKind {
@@ -110,6 +151,23 @@ impl Backend {
         Some(Analysis { loaded, index, file, offset })
     }
 
+    async fn rules_for_term(&self, params: RulesForTermParams) -> Result<Vec<RankedRule>> {
+        let Some(analysis) = self.analyze(&params.text_document.uri, params.position).await else { return Ok(Vec::new()) };
+        let ranked = analysis
+            .index
+            .resolve(analysis.file, analysis.offset)
+            .filter(|&id| analysis.index.defs[id].kind == DefKind::Term)
+            .map(|id| rules::for_term(&analysis.loaded, &analysis.index.defs[id].name))
+            .unwrap_or_default();
+        Ok(ranked_rules(&analysis, ranked))
+    }
+
+    async fn rules_for_clif(&self, params: RulesForClifParams) -> Result<Vec<RankedRule>> {
+        let Some(analysis) = self.analyze(&params.text_document.uri, Position::new(0, 0)).await else { return Ok(Vec::new()) };
+        let ranked = rules::for_clif(&analysis.loaded, &analysis.index, &params.snippet);
+        Ok(ranked_rules(&analysis, ranked))
+    }
+
     async fn refresh_diagnostics(&self) {
         let mut found: HashMap<Uri, Vec<Diagnostic>> = HashMap::new();
         {
@@ -151,6 +209,7 @@ impl LanguageServer for Backend {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::INCREMENTAL)),
                 code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+                code_lens_provider: Some(CodeLensOptions { resolve_provider: Some(false) }),
                 completion_provider: Some(CompletionOptions {
                     trigger_characters: Some(vec!["(".to_owned(), " ".to_owned()]),
                     ..CompletionOptions::default()
@@ -394,6 +453,28 @@ impl LanguageServer for Backend {
             changes.entry(location.uri).or_default().push(TextEdit { range: location.range, new_text: edit.new_text });
         }
         Ok(Some(WorkspaceEdit { changes: Some(changes), ..WorkspaceEdit::default() }))
+    }
+
+    async fn code_lens(&self, params: CodeLensParams) -> Result<Option<Vec<CodeLens>>> {
+        let uri = params.text_document.uri;
+        let Some(analysis) = self.analyze(&uri, Position::new(0, 0)).await else { return Ok(None) };
+        let text = &analysis.loaded.sources[analysis.file].text;
+        let mut lenses = Vec::new();
+        for def in analysis.index.defs.iter().filter(|def| def.kind == DefKind::Term && def.file == analysis.file) {
+            let count = rules::for_term(&analysis.loaded, &def.name).len();
+            let start = position_in(text, def.name_span.start);
+            let title = if count == 1 { "1 rule".to_owned() } else { format!("{count} rules") };
+            lenses.push(CodeLens {
+                range: Range::new(position_in(text, def.form.start), position_in(text, def.form.end)),
+                command: Some(Command {
+                    title,
+                    command: "isle-lsp.rulesForTerm".to_owned(),
+                    arguments: Some(vec![serde_json::json!(uri), serde_json::json!(start)]),
+                }),
+                data: None,
+            });
+        }
+        Ok(Some(lenses))
     }
 
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {

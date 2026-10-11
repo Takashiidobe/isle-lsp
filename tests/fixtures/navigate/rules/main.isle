@@ -1,0 +1,27 @@
+; mode: navigate
+; check: === navigate ===
+; nextln: rules 1:6
+; nextln: priority 2 navigate/rules/main.isle 4:0..4:41
+; nextln: priority 1 navigate/rules/main.isle 3:0..3:41
+; nextln: wins over navigate/rules/main.isle 2:0..2:30
+; nextln: priority 0 navigate/rules/main.isle 2:0..2:30
+; nextln: rules 5:6
+; nextln: none
+; nextln: clif 5:6 v1 = iconst.i32 0\nv2 = iadd v0, v1
+; nextln: priority 1 navigate/rules/main.isle 3:0..3:41
+; nextln: priority 0 navigate/rules/main.isle 2:0..2:30
+; nextln: clif 5:6 v1 = isub v0, v0
+; nextln: priority 2 navigate/rules/main.isle 4:0..4:41
+; nextln: clif 5:6 v1 = band v0, v0
+; nextln: none
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+;     ^ rules
+(rule (simplify (iadd x y)) y)
+(rule 1 (simplify (iadd x (iconst 0))) x)
+(rule 2 (simplify (isub x x)) (iconst 0))
+(decl lonely (Value) Value)
+;     ^ rules
+;     ^ clif v1 = iconst.i32 0\nv2 = iadd v0, v1
+;     ^ clif v1 = isub v0, v0
+;     ^ clif v1 = band v0, v0

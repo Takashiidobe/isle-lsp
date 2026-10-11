@@ -117,7 +117,20 @@ their type, so they get no hint.
 
 ## Custom requests
 
-None yet. Every feature above uses standard LSP requests.
+- **`isle/rulesForTerm`** takes `{ textDocument, position }` with the cursor on
+  a term and returns every rule whose head is that term, highest priority
+  first. Each entry has `location`, `priority` and `winsOver`, the locations of
+  lower-priority rules whose patterns can overlap it. Overlap is judged by
+  comparing pattern shapes, so it is a heuristic.
+- **`isle/rulesForClif`** takes `{ textDocument, snippet }` where `snippet` is
+  CLIF text such as `v1 = iconst.i32 0` then `v2 = iadd v0, v1`, and returns the
+  rules whose left-hand side could match the instruction that produces the
+  returned (or last) value, in the same shape. Operands defined in the snippet
+  are matched structurally; other values match anything.
+- A **code lens** above each `decl` shows how many rules define the term and
+  runs the client command `isle-lsp.rulesForTerm` with the document URI and the
+  position of the name, for clients that want to forward it to the request
+  above.
 
 ## Project files
 

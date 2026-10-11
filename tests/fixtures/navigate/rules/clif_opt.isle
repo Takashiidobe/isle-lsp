@@ -1,0 +1,3 @@
+(decl iadd (Value Value) Value)
+(decl isub (Value Value) Value)
+(decl iconst (u64) Value)

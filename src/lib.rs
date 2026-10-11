@@ -9,6 +9,7 @@ pub mod navigation;
 pub mod lexer;
 pub mod modes;
 pub mod parser;
+pub mod rules;
 pub mod project;
 pub mod semantic;
 pub mod server;
