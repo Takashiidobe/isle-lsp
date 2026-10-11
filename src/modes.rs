@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use tower_lsp_server::ls_types::{DiagnosticSeverity, NumberOrString, Position, Range, Uri};
 
 use crate::actions;
+use crate::completion;
 use crate::diagnostics;
 use crate::document::Document;
 use crate::hover;
@@ -162,6 +163,23 @@ fn render_navigate(input: &Input) -> String {
             "uses" => places(navigation::references(&index, file, offset, false), &mut out),
             "highlight" => places(navigation::highlights(&index, file, offset), &mut out),
             "prepare" => places(navigation::prepare_rename(&index, &loaded, file, offset).into_iter().collect(), &mut out),
+            "complete" => {
+                let items = completion::complete(&index, &loaded, file, offset);
+                if items.is_empty() {
+                    out.push_str("  none\n");
+                }
+                for item in items {
+                    let snippet = item.snippet.map(|s| format!(" snippet={s}")).unwrap_or_default();
+                    out.push_str(&format!("  {} {:?} {}{snippet}\n", item.label, item.kind, item.detail));
+                }
+            }
+            "signature" => match completion::signature(&index, &loaded, file, offset) {
+                Some(signature) => {
+                    let params: Vec<&str> = signature.params.iter().map(|&(s, e)| &signature.label[s..e]).collect();
+                    out.push_str(&format!("  {} params={params:?} active={}\n", signature.label, signature.active));
+                }
+                None => out.push_str("  none\n"),
+            },
             "hover" => match hover::hover(&index, &loaded, file, offset, |file, offset| {
                 let locator = locate(input, &loaded, file, offset);
                 locator.rsplit(' ').next().and_then(|at| at.split(':').next()?.parse().ok()).unwrap_or(0)

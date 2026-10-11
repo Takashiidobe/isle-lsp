@@ -57,6 +57,33 @@ that clash with an existing definition, including one of a different kind.
 Renaming a type also rewrites the `Type.` prefix of its variants, and renaming
 a variant keeps the type prefix.
 
+## Hover
+
+Hovering a term shows its `decl`, the `;;` doc comment above it, what
+implements it (internal constructor from rules, external constructor or
+extractor from `extern`, internal extractor from `extractor`) and how many rules
+define it, patterns match on it and expressions call it. Types, variants,
+constants and macros show their definition. Variables show their inferred type
+(from the enclosing term's `decl`, a `let` annotation, or the right-hand side
+of an `if-let`), the line they are bound on and their use count.
+
+## Completion and signature help
+
+Completion depends on where the cursor is:
+
+- Top level, after `(`: form keywords.
+- Head of a rule's left-hand side: every declared term.
+- Head of a nested pattern: only terms that can be matched (extractors, enum
+  variants, macros), never constructor-only terms.
+- Head of a right-hand side or `if-let` expression: terms that can be called,
+  with a snippet tab stop per argument.
+- Argument of a call: variables in scope in the current form and constants.
+- Type positions in `decl` and `let` bindings: types.
+
+Where the enclosing term's `decl` gives an expected type, terms and values of
+other types are left out. Signature help shows `(term ArgType...) -> Ret` for
+the innermost call and highlights the current argument.
+
 ## Project files
 
 ISLE files only make sense together, so the server groups them into a project

@@ -5,7 +5,9 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tower_lsp_server::jsonrpc::{Error, Result};
 use tower_lsp_server::ls_types::{
-    CodeActionOrCommand, CodeActionParams, CodeActionProviderCapability, CodeActionResponse, Diagnostic,
+    CodeActionOrCommand, CodeActionParams, CompletionItem, CompletionItemKind, CompletionOptions, CompletionParams,
+    CompletionResponse, InsertTextFormat, ParameterInformation, ParameterLabel, SignatureHelp, SignatureHelpOptions,
+    SignatureHelpParams, SignatureInformation, CodeActionProviderCapability, CodeActionResponse, Diagnostic,
     DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DocumentHighlight,
     DocumentHighlightKind, DocumentHighlightParams, GotoDefinitionParams, GotoDefinitionResponse, Hover,
     HoverContents, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult, Location, MarkupContent,
@@ -16,6 +18,7 @@ use tower_lsp_server::ls_types::{
 use tower_lsp_server::{Client, ClientSocket, LanguageServer, LspService};
 
 use crate::actions;
+use crate::completion::{self, ItemKind};
 use crate::diagnostics;
 use crate::document::{Document, position_in};
 use crate::hover;
@@ -114,6 +117,14 @@ impl LanguageServer for Backend {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::INCREMENTAL)),
                 code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+                completion_provider: Some(CompletionOptions {
+                    trigger_characters: Some(vec!["(".to_owned(), " ".to_owned()]),
+                    ..CompletionOptions::default()
+                }),
+                signature_help_provider: Some(SignatureHelpOptions {
+                    trigger_characters: Some(vec![" ".to_owned()]),
+                    ..SignatureHelpOptions::default()
+                }),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 definition_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
@@ -149,6 +160,55 @@ impl LanguageServer for Backend {
         Ok(found.map(|found| Hover {
             contents: HoverContents::Markup(MarkupContent { kind: MarkupKind::Markdown, value: found.markdown }),
             range: Some(analysis.range(Place { file: analysis.file, span: found.span })),
+        }))
+    }
+
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        let at = params.text_document_position;
+        let Some(analysis) = self.analyze(&at.text_document.uri, at.position).await else { return Ok(None) };
+        let items = completion::complete(&analysis.index, &analysis.loaded, analysis.file, analysis.offset)
+            .into_iter()
+            .map(|item| CompletionItem {
+                label: item.label,
+                kind: Some(match item.kind {
+                    ItemKind::Keyword => CompletionItemKind::KEYWORD,
+                    ItemKind::Term => CompletionItemKind::FUNCTION,
+                    ItemKind::Type => CompletionItemKind::CLASS,
+                    ItemKind::Variant => CompletionItemKind::ENUM_MEMBER,
+                    ItemKind::Variable => CompletionItemKind::VARIABLE,
+                    ItemKind::Const => CompletionItemKind::CONSTANT,
+                }),
+                detail: (!item.detail.is_empty()).then_some(item.detail),
+                insert_text_format: item.snippet.as_ref().map(|_| InsertTextFormat::SNIPPET),
+                insert_text: item.snippet,
+                ..CompletionItem::default()
+            })
+            .collect();
+        Ok(Some(CompletionResponse::Array(items)))
+    }
+
+    async fn signature_help(&self, params: SignatureHelpParams) -> Result<Option<SignatureHelp>> {
+        let at = params.text_document_position_params;
+        let Some(analysis) = self.analyze(&at.text_document.uri, at.position).await else { return Ok(None) };
+        let found = completion::signature(&analysis.index, &analysis.loaded, analysis.file, analysis.offset);
+        Ok(found.map(|found| SignatureHelp {
+            signatures: vec![SignatureInformation {
+                label: found.label,
+                documentation: None,
+                parameters: Some(
+                    found
+                        .params
+                        .into_iter()
+                        .map(|(start, end)| ParameterInformation {
+                            label: ParameterLabel::LabelOffsets([start as u32, end as u32]),
+                            documentation: None,
+                        })
+                        .collect(),
+                ),
+                active_parameter: None,
+            }],
+            active_signature: Some(0),
+            active_parameter: Some(found.active as u32),
         }))
     }
 

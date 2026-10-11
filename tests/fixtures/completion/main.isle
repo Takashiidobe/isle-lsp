@@ -1,0 +1,76 @@
+; mode: navigate
+; check: === navigate ===
+; nextln: complete 11:17
+; nextln: iconst Term (Imm) -> Value snippet=iconst $${1:Imm}
+; nextln: complete 12:20
+; nextln: double Term (Value) -> Value snippet=double $${1:Value}
+; nextln: pair Term (Value Value) -> Value snippet=pair $${1:Value} $${2:Value}
+; nextln: simplify Term (Value) -> Value snippet=simplify $${1:Value}
+; nextln: foo Term () -> Value
+; nextln: let Keyword
+; nextln: complete 13:7
+; nextln: iconst Term (Imm) -> Value snippet=iconst $${1:Imm}
+; nextln: double Term (Value) -> Value snippet=double $${1:Value}
+; nextln: pair Term (Value Value) -> Value snippet=pair $${1:Value} $${2:Value}
+; nextln: simplify Term (Value) -> Value snippet=simplify $${1:Value}
+; nextln: foo Term () -> Value
+; nextln: complete 14:27
+; nextln: $$ZERO Const Value
+; nextln: x Variable Value
+; nextln: signature 14:27
+; nextln: (double Value) -> Value params=["Value"] active=0
+; nextln: complete 15:11
+; nextln: Value Type type
+; nextln: Imm Type type
+; nextln: complete 16:1
+; nextln: pragma Keyword
+; nextln: type Keyword
+; nextln: decl Keyword
+; nextln: attr Keyword
+; nextln: spec Keyword
+; nextln: macro Keyword
+; nextln: state Keyword
+; nextln: model Keyword
+; nextln: form Keyword
+; nextln: instantiate Keyword
+; nextln: rule Keyword
+; nextln: extractor Keyword
+; nextln: extern Keyword
+; nextln: convert Keyword
+; nextln: signature 17:27
+; nextln: (pair Value Value) -> Value params=["Value", "Value"] active=1
+; nextln: complete 17:27
+; nextln: $$ZERO Const Value
+; nextln: x Variable Value
+; nextln: complete 18:28
+; nextln: Value Type type
+; nextln: Imm Type type
+
+(type Value (primitive Value))
+(type Imm (primitive Imm))
+(extern const $ZERO Value)
+(decl iconst (Imm) Value)
+(extern extractor iconst iconst_etor)
+(decl pure double (Value) Value)
+(extern constructor double double_ctor)
+(decl pair (Value Value) Value)
+(decl simplify (Value) Value)
+(rule (simplify (iconst c)) (double c))
+(rule (simplify ()) x)
+;                ^ complete
+(rule (simplify x) ())
+;                   ^ complete
+(rule () x)
+;      ^ complete
+(rule (simplify x) (double ))
+;                          ^ complete
+;                          ^ signature
+(decl foo () Value)
+;          ^ complete
+()
+;^ complete
+(rule (simplify x) (pair x x))
+;                          ^ signature
+;                          ^ complete
+(rule (simplify x) (let ((y  x)) y))
+;                           ^ complete
