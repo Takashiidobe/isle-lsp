@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tower_lsp_server::jsonrpc::{Error, Result};
 use tower_lsp_server::ls_types::{
+    CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem, CallHierarchyOutgoingCall,
+    CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams, CallHierarchyServerCapability,
     CodeAction, CodeActionKind, CreateFile, CreateFileOptions, DocumentChangeOperation, DocumentChanges, OptionalVersionedTextDocumentIdentifier, ResourceOp, TextDocumentEdit, CodeLens, CodeLensOptions, CodeLensParams, Command, TextDocumentIdentifier, CodeActionOrCommand, CodeActionParams, DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse,
     FoldingRange, FoldingRangeParams, FoldingRangeProviderCapability, SemanticToken, SemanticTokenModifier,
     SemanticTokenType, SemanticTokens, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
@@ -28,7 +30,8 @@ use crate::diagnostics;
 use crate::document::{Document, position_in};
 use crate::filetest;
 use crate::hover;
-use crate::index::{DefKind, Index};
+use crate::hierarchy;
+use crate::index::{DefId, DefKind, Index};
 use crate::rules;
 use crate::inlay;
 use crate::lints;
@@ -137,6 +140,26 @@ impl Analysis {
         Some(Location::new(Uri::from_file_path(&source.path)?, self.range(place)))
     }
 
+    fn call_item(&self, def: DefId) -> Option<CallHierarchyItem> {
+        let def = &self.index.defs[def];
+        let selection = self.location(Place { file: def.file, span: def.name_span })?;
+        let range = self.range(Place { file: def.file, span: def.form });
+        let detail = (!def.args.is_empty() || def.ret.is_some()).then(|| match &def.ret {
+            Some(ret) => format!("({}) -> {ret}", def.args.join(" ")),
+            None => format!("({})", def.args.join(" ")),
+        });
+        Some(CallHierarchyItem {
+            name: def.name.clone(),
+            kind: SymbolKind::FUNCTION,
+            tags: None,
+            detail,
+            uri: selection.uri,
+            range,
+            selection_range: selection.range,
+            data: None,
+        })
+    }
+
     fn range(&self, place: Place) -> Range {
         let text = &self.loaded.sources[place.file].text;
         Range::new(position_in(text, place.span.start), position_in(text, place.span.end))
@@ -168,6 +191,17 @@ impl Backend {
         let offset = documents.get(uri)?.offset(position);
         let index = Index::build(&loaded);
         Some(Analysis { loaded, index, file, offset })
+    }
+
+    async fn hierarchy_calls(&self, item: &CallHierarchyItem, incoming: bool) -> Option<(Analysis, Vec<hierarchy::Call>)> {
+        let analysis = self.analyze(&item.uri, item.selection_range.start).await?;
+        let def = hierarchy::prepare(&analysis.index, analysis.file, analysis.offset)?;
+        let calls = if incoming {
+            hierarchy::incoming(&analysis.index, &analysis.loaded, def)
+        } else {
+            hierarchy::outgoing(&analysis.index, &analysis.loaded, def)
+        };
+        Some((analysis, calls))
     }
 
     async fn rules_for_term(&self, params: RulesForTermParams) -> Result<Vec<RankedRule>> {
@@ -271,6 +305,7 @@ impl LanguageServer for Backend {
                 inlay_hint_provider: Some(OneOf::Left(true)),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 definition_provider: Some(OneOf::Left(true)),
+                call_hierarchy_provider: Some(CallHierarchyServerCapability::Simple(true)),
                 references_provider: Some(OneOf::Left(true)),
                 document_highlight_provider: Some(OneOf::Left(true)),
                 rename_provider: Some(OneOf::Right(RenameOptions {
@@ -293,6 +328,41 @@ impl LanguageServer for Backend {
         let Some(analysis) = self.analyze(&at.text_document.uri, at.position).await else { return Ok(None) };
         let place = navigation::definition(&analysis.index, analysis.file, analysis.offset);
         Ok(place.and_then(|place| analysis.location(place)).map(GotoDefinitionResponse::Scalar))
+    }
+
+    async fn prepare_call_hierarchy(&self, params: CallHierarchyPrepareParams) -> Result<Option<Vec<CallHierarchyItem>>> {
+        let at = params.text_document_position_params;
+        let Some(analysis) = self.analyze(&at.text_document.uri, at.position).await else { return Ok(None) };
+        let item = hierarchy::prepare(&analysis.index, analysis.file, analysis.offset).and_then(|def| analysis.call_item(def));
+        Ok(item.map(|item| vec![item]))
+    }
+
+    async fn incoming_calls(&self, params: CallHierarchyIncomingCallsParams) -> Result<Option<Vec<CallHierarchyIncomingCall>>> {
+        let Some((analysis, calls)) = self.hierarchy_calls(&params.item, true).await else { return Ok(None) };
+        let calls = calls
+            .into_iter()
+            .filter_map(|call| {
+                Some(CallHierarchyIncomingCall {
+                    from: analysis.call_item(call.def)?,
+                    from_ranges: call.sites.into_iter().map(|site| analysis.range(site)).collect(),
+                })
+            })
+            .collect();
+        Ok(Some(calls))
+    }
+
+    async fn outgoing_calls(&self, params: CallHierarchyOutgoingCallsParams) -> Result<Option<Vec<CallHierarchyOutgoingCall>>> {
+        let Some((analysis, calls)) = self.hierarchy_calls(&params.item, false).await else { return Ok(None) };
+        let calls = calls
+            .into_iter()
+            .filter_map(|call| {
+                Some(CallHierarchyOutgoingCall {
+                    to: analysis.call_item(call.def)?,
+                    from_ranges: call.sites.into_iter().map(|site| analysis.range(site)).collect(),
+                })
+            })
+            .collect();
+        Ok(Some(calls))
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {

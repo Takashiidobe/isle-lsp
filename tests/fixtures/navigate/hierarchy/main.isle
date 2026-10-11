@@ -1,0 +1,104 @@
+(decl top (u32) u32)
+;     ^ incoming
+;     ^ outgoing
+(decl mid (u32) u32)
+;     ^ incoming
+;     ^ outgoing
+(decl rec leaf (u32) u32)
+;          ^ incoming
+;          ^ outgoing
+(decl ext (u32) u32)
+;     ^ incoming
+;     ^ outgoing
+(decl even (u32) u32)
+;     ^ incoming
+;     ^ outgoing
+(decl odd (u32) u32)
+;     ^ outgoing
+(decl lonely (u32) u32)
+;     ^ incoming
+;     ^ outgoing
+(extern constructor ext ext)
+(macro (twice x) (mid (mid x)))
+;        ^ incoming
+;        ^ outgoing
+(rule (top x) (mid (twice x)))
+(rule (mid x) (leaf (ext x)))
+(rule (leaf 0) 0)
+(rule 1 (leaf x) (leaf x))
+(rule (even x) (odd x))
+(rule (odd x) (even x))
+; mode: navigate
+; check: === navigate ===
+; nextln: incoming 0:6
+; nextln: term top
+; nextln: term lonely navigate/hierarchy/main.isle 6:6..6:12
+; nextln: call navigate/hierarchy/other.isle 0:18..0:21
+; nextln: outgoing 0:6
+; nextln: term top
+; nextln: term mid navigate/hierarchy/main.isle 1:6..1:9
+; nextln: call navigate/hierarchy/main.isle 9:15..9:18
+; nextln: macro twice navigate/hierarchy/main.isle 8:8..8:13
+; nextln: call navigate/hierarchy/main.isle 9:20..9:25
+; nextln: incoming 1:6
+; nextln: term mid
+; nextln: term top navigate/hierarchy/main.isle 0:6..0:9
+; nextln: call navigate/hierarchy/main.isle 9:15..9:18
+; nextln: macro twice navigate/hierarchy/main.isle 8:8..8:13
+; nextln: call navigate/hierarchy/main.isle 8:18..8:21
+; nextln: call navigate/hierarchy/main.isle 8:23..8:26
+; nextln: outgoing 1:6
+; nextln: term mid
+; nextln: term leaf navigate/hierarchy/main.isle 2:10..2:14
+; nextln: call navigate/hierarchy/main.isle 10:15..10:19
+; nextln: term ext navigate/hierarchy/main.isle 3:6..3:9
+; nextln: call navigate/hierarchy/main.isle 10:21..10:24
+; nextln: incoming 2:11
+; nextln: term leaf
+; nextln: term mid navigate/hierarchy/main.isle 1:6..1:9
+; nextln: call navigate/hierarchy/main.isle 10:15..10:19
+; nextln: term leaf navigate/hierarchy/main.isle 2:10..2:14
+; nextln: call navigate/hierarchy/main.isle 12:18..12:22
+; nextln: outgoing 2:11
+; nextln: term leaf
+; nextln: term leaf navigate/hierarchy/main.isle 2:10..2:14
+; nextln: call navigate/hierarchy/main.isle 12:18..12:22
+; nextln: incoming 3:6
+; nextln: term ext
+; nextln: term mid navigate/hierarchy/main.isle 1:6..1:9
+; nextln: call navigate/hierarchy/main.isle 10:21..10:24
+; nextln: term lonely navigate/hierarchy/main.isle 6:6..6:12
+; nextln: call navigate/hierarchy/other.isle 0:23..0:26
+; nextln: outgoing 3:6
+; nextln: term ext
+; nextln: none
+; nextln: incoming 4:6
+; nextln: term even
+; nextln: term odd navigate/hierarchy/main.isle 5:6..5:9
+; nextln: call navigate/hierarchy/main.isle 14:15..14:19
+; nextln: outgoing 4:6
+; nextln: term even
+; nextln: term odd navigate/hierarchy/main.isle 5:6..5:9
+; nextln: call navigate/hierarchy/main.isle 13:16..13:19
+; nextln: outgoing 5:6
+; nextln: term odd
+; nextln: term even navigate/hierarchy/main.isle 4:6..4:10
+; nextln: call navigate/hierarchy/main.isle 14:15..14:19
+; nextln: incoming 6:6
+; nextln: term lonely
+; nextln: none
+; nextln: outgoing 6:6
+; nextln: term lonely
+; nextln: term top navigate/hierarchy/main.isle 0:6..0:9
+; nextln: call navigate/hierarchy/other.isle 0:18..0:21
+; nextln: term ext navigate/hierarchy/main.isle 3:6..3:9
+; nextln: call navigate/hierarchy/other.isle 0:23..0:26
+; nextln: incoming 8:9
+; nextln: macro twice
+; nextln: term top navigate/hierarchy/main.isle 0:6..0:9
+; nextln: call navigate/hierarchy/main.isle 9:20..9:25
+; nextln: outgoing 8:9
+; nextln: macro twice
+; nextln: term mid navigate/hierarchy/main.isle 1:6..1:9
+; nextln: call navigate/hierarchy/main.isle 8:18..8:21
+; nextln: call navigate/hierarchy/main.isle 8:23..8:26

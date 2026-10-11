@@ -5,6 +5,7 @@ pub mod diagnostics;
 pub mod document;
 pub mod filetest;
 pub mod graph;
+pub mod hierarchy;
 pub mod hover;
 pub mod html;
 pub mod index;

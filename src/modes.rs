@@ -7,6 +7,7 @@ use crate::completion;
 use crate::diagnostics;
 use crate::document::Document;
 use crate::filetest;
+use crate::hierarchy;
 use crate::hover;
 use crate::index;
 use crate::inlay;
@@ -179,6 +180,29 @@ fn render_navigate(input: &Input) -> String {
             "references" => places(navigation::references(&index, file, offset, true), &mut out),
             "uses" => places(navigation::references(&index, file, offset, false), &mut out),
             "highlight" => places(navigation::highlights(&index, file, offset), &mut out),
+            "incoming" | "outgoing" => {
+                let Some(def) = hierarchy::prepare(&index, file, offset) else {
+                    out.push_str("  none\n");
+                    continue;
+                };
+                let calls = if query.kind == "incoming" {
+                    hierarchy::incoming(&index, &loaded, def)
+                } else {
+                    hierarchy::outgoing(&index, &loaded, def)
+                };
+                out.push_str(&format!("  {} {}\n", index.defs[def].kind.label(), index.defs[def].name));
+                if calls.is_empty() {
+                    out.push_str("  none\n");
+                }
+                for call in calls {
+                    let other = &index.defs[call.def];
+                    let at = navigation::Place { file: other.file, span: other.name_span };
+                    out.push_str(&format!("  {} {} {}\n", other.kind.label(), other.name, locate_span(input, &loaded, at)));
+                    for site in call.sites {
+                        out.push_str(&format!("    call {}\n", locate_span(input, &loaded, site)));
+                    }
+                }
+            }
             "prepare" => places(navigation::prepare_rename(&index, &loaded, file, offset).into_iter().collect(), &mut out),
             "outline" => {
                 fn show(input: &Input, loaded: &project::Loaded, file: usize, symbols: &[symbols::Symbol], depth: usize, out: &mut String) {

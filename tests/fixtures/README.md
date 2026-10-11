@@ -54,7 +54,10 @@ Modes live in `src/modes.rs`.
   `range type modifiers text`), `inlay` (every hint in the file as `path L:C : Type`), `hover` (range then the markdown, each line prefixed with `|`), `complete`
   (one `label Kind detail` line per item), `signature` (label, parameters and
   active index), `prepare` (prepare-rename range) and `rename <new name>`, which lists
-  `range => "text"` edits or `error: message`. `view <name> [term]` renders an
+  `range => "text"` edits or `error: message`. `incoming` and `outgoing` print
+  the call hierarchy of the term or macro under the cursor: its kind and name,
+  then one line per caller or callee with its definition and an indented `call`
+  line per call site. `view <name> [term]` renders an
   `isle/view` view (`trie`, `rust` or `graph`) for the term under the cursor or
   the given one and prints every section: text and tree lines, tables as
   ` | `-separated rows, and `(html page)` for a page. `page <name> [term]` is

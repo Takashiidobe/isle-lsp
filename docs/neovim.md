@@ -41,6 +41,14 @@ Go to definition is `vim.lsp.buf.definition()`. Map it if you want a key:
 vim.keymap.set('n', 'gd', vim.lsp.buf.definition)
 ```
 
+Call hierarchy has no default mapping. Neovim lists callers and callees in the
+quickfix list:
+
+```lua
+vim.keymap.set('n', 'gci', vim.lsp.buf.incoming_calls)
+vim.keymap.set('n', 'gco', vim.lsp.buf.outgoing_calls)
+```
+
 Turn on inlay hints and semantic tokens per buffer:
 
 ```lua

@@ -88,6 +88,18 @@ that clash with an existing definition, including one of a different kind.
 Renaming a type also rewrites the `Type.` prefix of its variants, and renaming
 a variant keeps the type prefix.
 
+### Call hierarchy
+
+`textDocument/prepareCallHierarchy` works on terms and macros. A call is a use in
+a right-hand side, an `if` or `if-let` clause or a macro body, and its caller is
+the term of the enclosing rule or the enclosing macro. Incoming calls list the
+callers across the project with every call site, outgoing calls list the terms
+and macros a term's rules call. Recursion shows a term as its own caller and
+callee, and mutual recursion shows up on both sides. Terms without rules, such as
+`extern` constructors, have no outgoing calls. Pattern matches (extractor uses)
+are not calls. It is built from the symbol index, so it keeps working while the
+project has errors.
+
 ## Hover
 
 Hovering a term shows its `decl`, the `;;` doc comment above it, what
