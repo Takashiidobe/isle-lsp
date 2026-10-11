@@ -7,8 +7,9 @@ use tower_lsp_server::jsonrpc::{Error, Result};
 use tower_lsp_server::ls_types::{
     CodeActionOrCommand, CodeActionParams, CodeActionProviderCapability, CodeActionResponse, Diagnostic,
     DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DocumentHighlight,
-    DocumentHighlightKind, DocumentHighlightParams, GotoDefinitionParams, GotoDefinitionResponse, InitializeParams,
-    InitializeResult, Location, OneOf, Position, PrepareRenameResponse, Range, ReferenceParams, RenameOptions,
+    DocumentHighlightKind, DocumentHighlightParams, GotoDefinitionParams, GotoDefinitionResponse, Hover,
+    HoverContents, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult, Location, MarkupContent,
+    MarkupKind, OneOf, Position, PrepareRenameResponse, Range, ReferenceParams, RenameOptions,
     RenameParams, ServerCapabilities, ServerInfo, TextDocumentPositionParams, TextDocumentSyncCapability,
     TextDocumentSyncKind, TextEdit, Uri, WorkDoneProgressOptions, WorkspaceEdit,
 };
@@ -17,6 +18,7 @@ use tower_lsp_server::{Client, ClientSocket, LanguageServer, LspService};
 use crate::actions;
 use crate::diagnostics;
 use crate::document::{Document, position_in};
+use crate::hover;
 use crate::index::Index;
 use crate::navigation::{self, Place};
 use crate::project::{self, Loaded, Project};
@@ -112,6 +114,7 @@ impl LanguageServer for Backend {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::INCREMENTAL)),
                 code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+                hover_provider: Some(HoverProviderCapability::Simple(true)),
                 definition_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
                 document_highlight_provider: Some(OneOf::Left(true)),
@@ -135,6 +138,18 @@ impl LanguageServer for Backend {
         let Some(analysis) = self.analyze(&at.text_document.uri, at.position).await else { return Ok(None) };
         let place = navigation::definition(&analysis.index, analysis.file, analysis.offset);
         Ok(place.and_then(|place| analysis.location(place)).map(GotoDefinitionResponse::Scalar))
+    }
+
+    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
+        let at = params.text_document_position_params;
+        let Some(analysis) = self.analyze(&at.text_document.uri, at.position).await else { return Ok(None) };
+        let found = hover::hover(&analysis.index, &analysis.loaded, analysis.file, analysis.offset, |file, offset| {
+            analysis.loaded.sources[file].text[..offset].matches('\n').count()
+        });
+        Ok(found.map(|found| Hover {
+            contents: HoverContents::Markup(MarkupContent { kind: MarkupKind::Markdown, value: found.markdown }),
+            range: Some(analysis.range(Place { file: analysis.file, span: found.span })),
+        }))
     }
 
     async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {

@@ -5,6 +5,7 @@ use tower_lsp_server::ls_types::{DiagnosticSeverity, NumberOrString, Position, R
 use crate::actions;
 use crate::diagnostics;
 use crate::document::Document;
+use crate::hover;
 use crate::index;
 use crate::lexer::{self, TokenKind};
 use crate::navigation;
@@ -161,6 +162,19 @@ fn render_navigate(input: &Input) -> String {
             "uses" => places(navigation::references(&index, file, offset, false), &mut out),
             "highlight" => places(navigation::highlights(&index, file, offset), &mut out),
             "prepare" => places(navigation::prepare_rename(&index, &loaded, file, offset).into_iter().collect(), &mut out),
+            "hover" => match hover::hover(&index, &loaded, file, offset, |file, offset| {
+                let locator = locate(input, &loaded, file, offset);
+                locator.rsplit(' ').next().and_then(|at| at.split(':').next()?.parse().ok()).unwrap_or(0)
+            }) {
+                Some(hover) => {
+                    let place = navigation::Place { file, span: hover.span };
+                    out.push_str(&format!("  {}\n", locate_span(input, &loaded, place)));
+                    for line in hover.markdown.lines() {
+                        out.push_str(&format!("  | {line}\n"));
+                    }
+                }
+                None => out.push_str("  none\n"),
+            },
             "rename" => match navigation::rename(&index, &loaded, file, offset, query.args.trim()) {
                 Ok(edits) => {
                     for edit in edits {

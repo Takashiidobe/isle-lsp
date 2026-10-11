@@ -1,0 +1,93 @@
+; mode: navigate
+; check: === navigate ===
+; nextln: hover 11:17
+; nextln: hover/main.isle 11:17..11:23
+; nextln: | ```isle
+; nextln: | (decl iconst (Imm) Value)
+; nextln: | ```
+; nextln: | An integer constant.
+; nextln: | Extractor only.
+; nextln: |
+; nextln: | external extractor
+; nextln: | 0 rules define it, 1 pattern matches, 2 calls
+; nextln: hover 11:23
+; nextln: hover/main.isle 11:17..11:23
+; nextln: | ```isle
+; nextln: | (decl iconst (Imm) Value)
+; nextln: | ```
+; nextln: | An integer constant.
+; nextln: | Extractor only.
+; nextln: |
+; nextln: | external extractor
+; nextln: | 0 rules define it, 1 pattern matches, 2 calls
+; nextln: hover 11:25
+; nextln: hover/main.isle 11:24..11:25
+; nextln: | ```isle
+; nextln: | c: Imm
+; nextln: | ```
+; nextln: | variable bound on line 12, 1 uses
+; nextln: hover 11:37
+; nextln: hover/main.isle 11:37..11:43
+; nextln: | ```isle
+; nextln: | (decl pure double (Value) Value)
+; nextln: | ```
+; nextln: | external constructor
+; nextln: | 0 rules define it, 0 pattern matches, 2 calls
+; nextln: hover 11:9
+; nextln: hover/main.isle 11:7..11:15
+; nextln: | ```isle
+; nextln: | (decl simplify (Value) Value)
+; nextln: | ```
+; nextln: | Replaces a doubling with a shift.
+; nextln: |
+; nextln: | internal constructor
+; nextln: | 2 rules define it, 0 pattern matches, 0 calls
+; nextln: hover 12:17
+; nextln: hover/main.isle 12:16..12:17
+; nextln: | ```isle
+; nextln: | z: Value
+; nextln: | ```
+; nextln: | variable bound on line 13, 1 uses
+; nextln: hover 12:27
+; nextln: hover/main.isle 12:26..12:27
+; nextln: | ```isle
+; nextln: | w: Value
+; nextln: | ```
+; nextln: | variable bound on line 13, 1 uses
+; nextln: hover 12:39
+; nextln: hover/main.isle 12:38..12:39
+; nextln: | ```isle
+; nextln: | w: Value
+; nextln: | ```
+; nextln: | variable bound on line 13, 1 uses
+; nextln: hover 15:19
+; nextln: hover/main.isle 15:19..15:27
+; nextln: | ```isle
+; nextln: | (Big (size Imm))
+; nextln: | ```
+; nextln: | variant, 1 uses
+
+(type Value (primitive Value))
+(type Imm (primitive Imm))
+;; An integer constant.
+;; Extractor only.
+(decl iconst (Imm) Value)
+(extern extractor iconst iconst_etor)
+(decl pure double (Value) Value)
+(extern constructor double double_ctor)
+;; Replaces a doubling with a shift.
+(decl simplify (Value) Value)
+(rule (simplify (iconst c)) (double (double (iconst c))))
+;                ^ hover
+;                      ^ hover
+;                        ^ hover
+;                                    ^ hover
+;        ^ hover
+(rule (simplify z) (let ((w Value z)) w))
+;                ^ hover
+;                          ^ hover
+;                                      ^ hover
+(type Kind (enum Small (Big (size Imm))))
+(decl kind_of (Value) Kind)
+(rule (kind_of x) (Kind.Big (iconst x)))
+;                  ^ hover
