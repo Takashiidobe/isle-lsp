@@ -10,5 +10,7 @@ pub mod lexer;
 pub mod modes;
 pub mod parser;
 pub mod project;
+pub mod semantic;
 pub mod server;
+pub mod symbols;
 pub mod syntax;

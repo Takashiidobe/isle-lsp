@@ -5,7 +5,11 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tower_lsp_server::jsonrpc::{Error, Result};
 use tower_lsp_server::ls_types::{
-    CodeActionOrCommand, CodeActionParams, InlayHint, InlayHintKind, InlayHintLabel, InlayHintParams, CompletionItem, CompletionItemKind, CompletionOptions, CompletionParams,
+    CodeActionOrCommand, CodeActionParams, DocumentSymbol, DocumentSymbolParams, DocumentSymbolResponse,
+    FoldingRange, FoldingRangeParams, FoldingRangeProviderCapability, SemanticToken, SemanticTokenModifier,
+    SemanticTokenType, SemanticTokens, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
+    SemanticTokensParams, SemanticTokensResult, SemanticTokensServerCapabilities, SymbolKind, WorkspaceSymbol,
+    WorkspaceSymbolParams, WorkspaceSymbolResponse, InlayHint, InlayHintKind, InlayHintLabel, InlayHintParams, CompletionItem, CompletionItemKind, CompletionOptions, CompletionParams,
     CompletionResponse, InsertTextFormat, ParameterInformation, ParameterLabel, SignatureHelp, SignatureHelpOptions,
     SignatureHelpParams, SignatureInformation, CodeActionProviderCapability, CodeActionResponse, Diagnostic,
     DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, DocumentHighlight,
@@ -26,9 +30,38 @@ use crate::index::Index;
 use crate::inlay;
 use crate::navigation::{self, Place};
 use crate::project::{self, Loaded, Project};
+use crate::semantic;
+use crate::symbols::{self, SymKind};
+use crate::syntax::Span;
 
 pub fn service() -> (LspService<Backend>, ClientSocket) {
     LspService::build(Backend::new).finish()
+}
+
+fn symbol_kind(kind: SymKind) -> SymbolKind {
+    match kind {
+        SymKind::Type => SymbolKind::CLASS,
+        SymKind::Variant => SymbolKind::ENUM_MEMBER,
+        SymKind::Term | SymKind::Group => SymbolKind::FUNCTION,
+        SymKind::Const => SymbolKind::CONSTANT,
+        SymKind::Macro => SymbolKind::OPERATOR,
+        SymKind::Rule => SymbolKind::METHOD,
+    }
+}
+
+#[allow(deprecated)]
+fn document_symbol(text: &str, symbol: &symbols::Symbol) -> DocumentSymbol {
+    let range = |span: Span| Range::new(position_in(text, span.start), position_in(text, span.end));
+    DocumentSymbol {
+        name: symbol.name.clone(),
+        detail: (!symbol.detail.is_empty()).then(|| symbol.detail.clone()),
+        kind: symbol_kind(symbol.kind),
+        tags: None,
+        deprecated: None,
+        range: range(symbol.range),
+        selection_range: range(symbol.selection),
+        children: (!symbol.children.is_empty()).then(|| symbol.children.iter().map(|child| document_symbol(text, child)).collect()),
+    }
 }
 
 struct Analysis {
@@ -126,6 +159,18 @@ impl LanguageServer for Backend {
                     trigger_characters: Some(vec![" ".to_owned()]),
                     ..SignatureHelpOptions::default()
                 }),
+                document_symbol_provider: Some(OneOf::Left(true)),
+                workspace_symbol_provider: Some(OneOf::Left(true)),
+                folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
+                semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(SemanticTokensOptions {
+                    legend: SemanticTokensLegend {
+                        token_types: semantic::TYPES.iter().map(|&name| SemanticTokenType::new(name)).collect(),
+                        token_modifiers: semantic::MODIFIERS.iter().map(|&name| SemanticTokenModifier::new(name)).collect(),
+                    },
+                    range: None,
+                    full: Some(SemanticTokensFullOptions::Bool(true)),
+                    work_done_progress_options: WorkDoneProgressOptions::default(),
+                })),
                 inlay_hint_provider: Some(OneOf::Left(true)),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 definition_provider: Some(OneOf::Left(true)),
@@ -163,6 +208,85 @@ impl LanguageServer for Backend {
             contents: HoverContents::Markup(MarkupContent { kind: MarkupKind::Markdown, value: found.markdown }),
             range: Some(analysis.range(Place { file: analysis.file, span: found.span })),
         }))
+    }
+
+    async fn document_symbol(&self, params: DocumentSymbolParams) -> Result<Option<DocumentSymbolResponse>> {
+        let Some(analysis) = self.analyze(&params.text_document.uri, Position::new(0, 0)).await else { return Ok(None) };
+        let symbols = symbols::document_symbols(&analysis.index, &analysis.loaded, analysis.file);
+        let text = &analysis.loaded.sources[analysis.file].text;
+        Ok(Some(DocumentSymbolResponse::Nested(symbols.iter().map(|symbol| document_symbol(text, symbol)).collect())))
+    }
+
+    async fn symbol(&self, params: WorkspaceSymbolParams) -> Result<Option<WorkspaceSymbolResponse>> {
+        let documents = self.documents.read().await;
+        let projects = self.projects.read().await;
+        let open: HashMap<PathBuf, String> = documents
+            .iter()
+            .filter_map(|(uri, document)| Some((project::normalize(&uri.to_file_path()?), document.text().to_owned())))
+            .collect();
+        let mut seen: Vec<&Vec<PathBuf>> = Vec::new();
+        let mut found = Vec::new();
+        for project in projects.values() {
+            if seen.contains(&&project.files) {
+                continue;
+            }
+            seen.push(&project.files);
+            let loaded = project.load(|path| open.get(path).cloned());
+            let index = Index::build(&loaded);
+            for symbol in symbols::workspace_symbols(&index, &params.query) {
+                let source = &loaded.sources[symbol.file];
+                let Some(uri) = Uri::from_file_path(&source.path) else { continue };
+                let range = Range::new(position_in(&source.text, symbol.span.start), position_in(&source.text, symbol.span.end));
+                found.push(WorkspaceSymbol {
+                    name: symbol.name,
+                    kind: symbol_kind(symbol.kind),
+                    tags: None,
+                    container_name: None,
+                    location: OneOf::Left(Location::new(uri, range)),
+                    data: None,
+                });
+            }
+        }
+        Ok(Some(WorkspaceSymbolResponse::Nested(found)))
+    }
+
+    async fn folding_range(&self, params: FoldingRangeParams) -> Result<Option<Vec<FoldingRange>>> {
+        let Some(analysis) = self.analyze(&params.text_document.uri, Position::new(0, 0)).await else { return Ok(None) };
+        let text = &analysis.loaded.sources[analysis.file].text;
+        let ranges = symbols::folding(&analysis.loaded, analysis.file)
+            .into_iter()
+            .map(|span| FoldingRange {
+                start_line: position_in(text, span.start).line,
+                start_character: None,
+                end_line: position_in(text, span.end).line,
+                end_character: None,
+                kind: None,
+                collapsed_text: None,
+            })
+            .collect();
+        Ok(Some(ranges))
+    }
+
+    async fn semantic_tokens_full(&self, params: SemanticTokensParams) -> Result<Option<SemanticTokensResult>> {
+        let Some(analysis) = self.analyze(&params.text_document.uri, Position::new(0, 0)).await else { return Ok(None) };
+        let text = &analysis.loaded.sources[analysis.file].text;
+        let (mut line, mut start) = (0, 0);
+        let mut data = Vec::new();
+        for token in semantic::tokens(&analysis.index, &analysis.loaded, analysis.file) {
+            let from = position_in(text, token.span.start);
+            let to = position_in(text, token.span.end);
+            let delta_line = from.line - line;
+            let delta_start = if delta_line == 0 { from.character - start } else { from.character };
+            data.push(SemanticToken {
+                delta_line,
+                delta_start,
+                length: to.character.saturating_sub(from.character),
+                token_type: token.kind as u32,
+                token_modifiers_bitset: token.modifiers,
+            });
+            (line, start) = (from.line, from.character);
+        }
+        Ok(Some(SemanticTokensResult::Tokens(SemanticTokens { result_id: None, data })))
     }
 
     async fn inlay_hint(&self, params: InlayHintParams) -> Result<Option<Vec<InlayHint>>> {

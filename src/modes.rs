@@ -13,6 +13,8 @@ use crate::lexer::{self, TokenKind};
 use crate::navigation;
 use crate::parser;
 use crate::project;
+use crate::semantic;
+use crate::symbols;
 use crate::syntax::{self, AtomKind, FormKind, Node, Span};
 
 pub struct Query {
@@ -164,6 +166,51 @@ fn render_navigate(input: &Input) -> String {
             "uses" => places(navigation::references(&index, file, offset, false), &mut out),
             "highlight" => places(navigation::highlights(&index, file, offset), &mut out),
             "prepare" => places(navigation::prepare_rename(&index, &loaded, file, offset).into_iter().collect(), &mut out),
+            "outline" => {
+                fn show(input: &Input, loaded: &project::Loaded, file: usize, symbols: &[symbols::Symbol], depth: usize, out: &mut String) {
+                    for symbol in symbols {
+                        let range = locate_span(input, loaded, navigation::Place { file, span: symbol.range });
+                        let detail = if symbol.detail.is_empty() { String::new() } else { format!(" [{}]", symbol.detail) };
+                        out.push_str(&format!("  {}{} {}{detail} {range}\n", "  ".repeat(depth), symbol.kind.label(), symbol.name));
+                        show(input, loaded, file, &symbol.children, depth + 1, out);
+                    }
+                }
+                show(input, &loaded, file, &symbols::document_symbols(&index, &loaded, file), 0, &mut out);
+            }
+            "symbols" => {
+                let found = symbols::workspace_symbols(&index, query.args.trim());
+                if found.is_empty() {
+                    out.push_str("  none\n");
+                }
+                for symbol in found {
+                    let place = navigation::Place { file: symbol.file, span: symbol.span };
+                    out.push_str(&format!("  {} {} {}\n", symbol.kind.label(), symbol.name, locate_span(input, &loaded, place)));
+                }
+            }
+            "folding" => {
+                for span in symbols::folding(&loaded, file) {
+                    out.push_str(&format!("  {}\n", locate_span(input, &loaded, navigation::Place { file, span })));
+                }
+            }
+            "semantic" => {
+                for token in semantic::tokens(&index, &loaded, file) {
+                    let place = navigation::Place { file, span: token.span };
+                    let modifiers: Vec<&str> = semantic::MODIFIERS
+                        .iter()
+                        .enumerate()
+                        .filter(|(bit, _)| token.modifiers & (1 << bit) != 0)
+                        .map(|(_, name)| *name)
+                        .collect();
+                    let text = token.span.text(&loaded.sources[file].text);
+                    out.push_str(&format!(
+                        "  {} {} {} {}\n",
+                        locate_span(input, &loaded, place),
+                        semantic::TYPES[token.kind],
+                        modifiers.join("+"),
+                        text
+                    ));
+                }
+            }
             "inlay" => {
                 let hints = inlay::hints(&index, &loaded, file);
                 if hints.is_empty() {

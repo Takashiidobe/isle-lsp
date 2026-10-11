@@ -1,0 +1,93 @@
+; mode: navigate
+; check: === navigate ===
+; nextln: outline 17:1
+; nextln: type Value symbols/main.isle 1:0..1:30
+; nextln: type Kind symbols/main.isle 2:0..4:28
+; nextln: variant Kind.Small symbols/main.isle 3:8..3:13
+; nextln: variant Kind.Big [Value] symbols/main.isle 4:8..4:26
+; nextln: const $$ZERO [Value] symbols/main.isle 5:0..5:26
+; nextln: term iconst [(Value) -> Value] symbols/main.isle 6:0..6:27
+; nextln: term simplify [(Value) -> Value] symbols/main.isle 9:0..9:34
+; nextln: rule (simplify (iconst c)) symbols/main.isle 11:0..12:8
+; nextln: rule first [priority 2] symbols/main.isle 13:0..13:29
+; nextln: term other [(Value) -> Value] symbols/main.isle 10:0..10:26
+; nextln: rule (other x) symbols/main.isle 14:0..14:18
+; nextln: rules elsewhere [rules] symbols/main.isle 15:0..15:22
+; nextln: rule (elsewhere x) symbols/main.isle 15:0..15:22
+; nextln: symbols 17:1 simp
+; nextln: term simplify symbols/main.isle 9:11..9:19
+; nextln: symbols 17:1 zero
+; nextln: const $$ZERO symbols/main.isle 5:14..5:19
+; nextln: folding 17:1
+; nextln: symbols/main.isle 2:0..4:28
+; nextln: symbols/main.isle 11:0..12:8
+; nextln: symbols/main.isle 16:0..17:13
+; nextln: semantic 17:1
+; nextln: symbols/main.isle 1:1..1:5 keyword  type
+; nextln: symbols/main.isle 1:6..1:11 type declaration Value
+; nextln: symbols/main.isle 2:1..2:5 keyword  type
+; nextln: symbols/main.isle 2:6..2:10 type declaration Kind
+; nextln: symbols/main.isle 3:8..3:13 enumMember declaration Small
+; nextln: symbols/main.isle 4:9..4:12 enumMember declaration Big
+; nextln: symbols/main.isle 4:19..4:24 type  Value
+; nextln: symbols/main.isle 5:1..5:7 keyword  extern
+; nextln: symbols/main.isle 5:8..5:13 keyword  const
+; nextln: symbols/main.isle 5:14..5:19 variable declaration+readonly $$ZERO
+; nextln: symbols/main.isle 5:20..5:25 type  Value
+; nextln: symbols/main.isle 6:1..6:5 keyword  decl
+; nextln: symbols/main.isle 6:6..6:12 function declaration iconst
+; nextln: symbols/main.isle 6:14..6:19 type  Value
+; nextln: symbols/main.isle 6:21..6:26 type  Value
+; nextln: symbols/main.isle 7:1..7:7 keyword  extern
+; nextln: symbols/main.isle 7:8..7:17 keyword  extractor
+; nextln: symbols/main.isle 7:18..7:24 function  iconst
+; nextln: symbols/main.isle 9:1..9:5 keyword  decl
+; nextln: symbols/main.isle 9:6..9:10 keyword  pure
+; nextln: symbols/main.isle 9:11..9:19 function declaration simplify
+; nextln: symbols/main.isle 9:21..9:26 type  Value
+; nextln: symbols/main.isle 9:28..9:33 type  Value
+; nextln: symbols/main.isle 10:1..10:5 keyword  decl
+; nextln: symbols/main.isle 10:6..10:11 function declaration other
+; nextln: symbols/main.isle 10:13..10:18 type  Value
+; nextln: symbols/main.isle 10:20..10:25 type  Value
+; nextln: symbols/main.isle 11:1..11:5 keyword  rule
+; nextln: symbols/main.isle 11:7..11:15 function  simplify
+; nextln: symbols/main.isle 11:17..11:23 function  iconst
+; nextln: symbols/main.isle 11:24..11:25 variable declaration c
+; nextln: symbols/main.isle 12:6..12:7 variable  c
+; nextln: symbols/main.isle 13:1..13:5 keyword  rule
+; nextln: symbols/main.isle 13:6..13:11 function declaration first
+; nextln: symbols/main.isle 13:12..13:13 number priority 2
+; nextln: symbols/main.isle 13:15..13:23 function  simplify
+; nextln: symbols/main.isle 13:24..13:25 variable declaration x
+; nextln: symbols/main.isle 13:27..13:28 variable  x
+; nextln: symbols/main.isle 14:1..14:5 keyword  rule
+; nextln: symbols/main.isle 14:7..14:12 function  other
+; nextln: symbols/main.isle 14:13..14:14 variable declaration x
+; nextln: symbols/main.isle 14:16..14:17 variable  x
+; nextln: symbols/main.isle 15:1..15:5 keyword  rule
+; nextln: symbols/main.isle 15:17..15:18 variable declaration x
+; nextln: symbols/main.isle 15:20..15:21 variable  x
+
+(type Value (primitive Value))
+(type Kind
+  (enum Small
+        (Big (size Value))))
+(extern const $ZERO Value)
+(decl iconst (Value) Value)
+(extern extractor iconst iconst_etor)
+;; Simplify.
+(decl pure simplify (Value) Value)
+(decl other (Value) Value)
+(rule (simplify (iconst c))
+      c)
+(rule first 2 (simplify x) x)
+(rule (other x) x)
+(rule (elsewhere x) x)
+(; block
+   comment ;)
+;^ outline
+;^ symbols simp
+;^ symbols zero
+;^ folding
+;^ semantic

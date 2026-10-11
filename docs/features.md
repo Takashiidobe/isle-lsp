@@ -90,6 +90,21 @@ Variables bound in patterns and `if-let` clauses get a `: Type` hint after the
 name, using the same type inference as hover. `let` bindings already spell out
 their type, so they get no hint.
 
+## Symbols, folding and semantic tokens
+
+- **Document symbols** give an outline: types with their variants, constants,
+  macros and declared terms. Each rule is nested under the term it defines,
+  named by its rule name or its left-hand side and annotated with its priority.
+  Rules whose term is declared in another file are grouped under that term's
+  name.
+- **Workspace symbols** search types, variants, terms, constants, macros and
+  named rules across the project by case-insensitive subsequence.
+- **Folding** covers every multi-line top-level form and block comment.
+- **Semantic tokens** classify form keywords and `decl` flags as keywords,
+  terms as functions, types, enum variants, constants (readonly variables),
+  macros and variables (binding sites carry the `declaration` modifier), and
+  integers, with the `priority` modifier on rule priorities.
+
 ## Project files
 
 ISLE files only make sense together, so the server groups them into a project
