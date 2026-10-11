@@ -1,6 +1,0 @@
-; mode: diagnostics
-; check: === diagnostics ===
-; nextln: diagnostics/cranelift-ungenerated/src/prelude.isle 0:0..0:0 warning[incomplete-project] semantic checks skipped: generated numerics.isle and clif_opt.isle not found, build cranelift-codegen or list them in isle-lsp.toml
-; nextln: diagnostics/cranelift-ungenerated/src/prelude_opt.isle 0:0..0:0 warning[incomplete-project] semantic checks skipped: generated numerics.isle and clif_opt.isle not found, build cranelift-codegen or list them in isle-lsp.toml
-; nextln: diagnostics/cranelift-ungenerated/src/opts/arith.isle 0:0..0:0 warning[incomplete-project] semantic checks skipped: generated numerics.isle and clif_opt.isle not found, build cranelift-codegen or list them in isle-lsp.toml
-(rule (simplify (iadd x (iconst 0))) x)

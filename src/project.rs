@@ -1,13 +1,15 @@
-use std::fs;
+use std::{env, fs};
 use std::path::{Component, Path, PathBuf};
 use std::time::SystemTime;
 
+use directories::ProjectDirs;
 use serde::Deserialize;
 
 use crate::parser;
 use crate::syntax;
 
 pub const CONFIG_NAME: &str = "isle-lsp.toml";
+const CRANELIFT_VERSION: &str = "0.136.2";
 
 #[derive(Debug, Deserialize)]
 struct Config {
@@ -200,7 +202,10 @@ fn with_generated(
     boundary: Option<&Path>,
 ) -> Project {
     let mut notes = Vec::new();
-    let generated = src.parent().and_then(|crate_dir| generated_isle(crate_dir, clif, boundary));
+    let generated = src
+        .parent()
+        .and_then(|crate_dir| generated_isle(crate_dir, clif, boundary))
+        .or_else(|| bundled_isle(clif));
     let incomplete = generated.is_none();
     match generated {
         Some(generated) => files.extend(generated),
@@ -210,6 +215,26 @@ fn with_generated(
         files.push(file.to_owned());
     }
     Project { origin, name: Some(name), files, notes, incomplete }
+}
+
+pub fn bundled_dir() -> PathBuf {
+    let base = ProjectDirs::from("", "", "isle-lsp").map_or_else(|| env::temp_dir().join("isle-lsp"), |dirs| dirs.cache_dir().to_owned());
+    base.join(format!("cranelift-{CRANELIFT_VERSION}"))
+}
+
+fn bundled_isle(clif: &str) -> Option<Vec<PathBuf>> {
+    let dir = bundled_dir();
+    let wanted = vec![dir.join("numerics.isle"), dir.join(clif)];
+    if !wanted.iter().all(|p| p.is_file()) {
+        let staging = dir.with_extension(format!("tmp{}", std::process::id()));
+        fs::create_dir_all(&staging).ok()?;
+        let generated = cranelift_codegen_meta::generate_isle(&staging).is_ok();
+        let published = generated && fs::rename(&staging, &dir).is_ok();
+        if !published {
+            let _ = fs::remove_dir_all(&staging);
+        }
+    }
+    wanted.iter().all(|p| p.is_file()).then_some(wanted)
 }
 
 fn generated_isle(crate_dir: &Path, clif: &str, boundary: Option<&Path>) -> Option<Vec<PathBuf>> {

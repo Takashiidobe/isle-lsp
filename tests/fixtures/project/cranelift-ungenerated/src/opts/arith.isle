@@ -1,4 +1,4 @@
-; mode: project
+; mode: project, resolve
 ; check: === project ===
 ; nextln: origin: cranelift-opt
 ; nextln: set: opt
@@ -6,8 +6,12 @@
 ; nextln: project/cranelift-ungenerated/src/prelude.isle
 ; nextln: project/cranelift-ungenerated/src/prelude_opt.isle
 ; nextln: project/cranelift-ungenerated/src/opts/arith.isle
-; nextln: note: generated numerics.isle and clif_opt.isle not found, build cranelift-codegen or list them in isle-lsp.toml
-; nextln: decls:
-; nextln: iconst_u (project/cranelift-ungenerated/src/prelude_opt.isle:1)
-; nextln: simplify (project/cranelift-ungenerated/src/opts/arith.isle:1)
+; nextln: <bundled>/numerics.isle
+; nextln: <bundled>/clif_opt.isle
+; check: simplify (project/cranelift-ungenerated/src/opts/arith.isle:1)
+; check: iadd (<bundled>/clif_opt.isle:
+; check: === resolve ===
+; check: <bundled>/clif_opt.isle
 (decl simplify (Value) Value)
+(rule (simplify (iadd x (iconst 0))) x)
+;                ^ resolve

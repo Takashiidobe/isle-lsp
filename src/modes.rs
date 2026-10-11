@@ -60,8 +60,18 @@ fn load_project(input: &Input) -> (project::Project, project::Loaded) {
     (project, loaded)
 }
 
+fn shown(root: &Path, path: &Path) -> String {
+    if let Ok(relative) = path.strip_prefix(root) {
+        return relative.display().to_string();
+    }
+    match path.strip_prefix(project::bundled_dir()) {
+        Ok(relative) => format!("<bundled>/{}", relative.display()),
+        Err(_) => path.display().to_string(),
+    }
+}
+
 fn render_diagnostics(input: &Input) -> String {
-    let relative = |path: &Path| path.strip_prefix(input.root).unwrap_or(path).display().to_string();
+    let relative = |path: &Path| shown(input.root, path);
     let (project, loaded) = load_project(input);
     let text_of = |path: &Path| loaded.sources.iter().find(|s| s.path == path).map(|s| s.text.as_str()).unwrap_or("");
     let range = |path: &Path, range: Range| {
@@ -123,7 +133,7 @@ fn locate(input: &Input, loaded: &project::Loaded, file: usize, offset: usize) -
     let line = source.text[..offset].matches('\n').count();
     let skipped = source.text.lines().take(line).filter(|l| is_directive(l) || is_caret(l)).count();
     let column = offset - source.text[..offset].rfind('\n').map_or(0, |newline| newline + 1);
-    let path = source.path.strip_prefix(input.root).unwrap_or(&source.path).display();
+    let path = shown(input.root, &source.path);
     format!("{path} {}:{column}", line - skipped)
 }
 
@@ -303,7 +313,7 @@ fn plain_position(text: &str, position: Position) -> (usize, u32) {
 }
 
 fn render_project(input: &Input) -> String {
-    let relative = |path: &Path| path.strip_prefix(input.root).unwrap_or(path).display().to_string();
+    let relative = |path: &Path| shown(input.root, path);
     let (project, loaded) = load_project(input);
 
     let origin = match &project.origin {
