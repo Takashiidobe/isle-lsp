@@ -30,7 +30,12 @@ clean:
      rule involved gets a diagnostic covering the whole rule, with the other
      rules attached as related locations, including rules in other files. The
      message names a priority that would resolve it, and a quick fix inserts or
-     raises the priority of that rule.
+     raises the priority of that rule. The message also gives the input both
+     rules match, such as `(simplify (iadd (iconst 0) (iconst 0)))` for
+     `(iadd x (iconst 0))` against `(iadd (iconst 0) y)`, with `_` where either
+     rule accepts anything. This pattern is built from the rule shapes, so it
+     ignores repeated variables and `if-let` clauses, and the message leaves it
+     out when the shapes cannot be combined.
    - `shadowed` and `unreachable`: a rule that can never match.
    - `recursion`: a term that recurses without the `rec` attribute.
 

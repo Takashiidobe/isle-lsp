@@ -1,9 +1,9 @@
 ; mode: diagnostics
 ; check: === diagnostics ===
-; nextln: diagnostics/overlap-priority/main.isle 3:0..3:23 error[overlap] rules are overlapping: give one of them a higher priority, for example `(rule 3 ...)`
+; nextln: diagnostics/overlap-priority/main.isle 3:0..3:23 error[overlap] rules are overlapping on `(simplify _)`: give one of them a higher priority, for example `(rule 3 ...)`
 ; nextln: fix Give this rule priority 3 3:6..3:7 => "3"
 ; nextln: related diagnostics/overlap-priority/main.isle 2:0..2:23 overlaps with this rule
-; nextln: diagnostics/overlap-priority/main.isle 2:0..2:23 error[overlap] rules are overlapping: give one of them a higher priority, for example `(rule 3 ...)`
+; nextln: diagnostics/overlap-priority/main.isle 2:0..2:23 error[overlap] rules are overlapping on `(simplify _)`: give one of them a higher priority, for example `(rule 3 ...)`
 ; nextln: fix Give this rule priority 3 2:6..2:7 => "3"
 ; nextln: related diagnostics/overlap-priority/main.isle 3:0..3:23 overlaps with this rule
 (type Value (primitive Value))

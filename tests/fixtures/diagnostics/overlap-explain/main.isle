@@ -1,0 +1,16 @@
+; mode: diagnostics
+; check: === diagnostics ===
+; nextln: diagnostics/overlap-explain/main.isle 7:0..7:39 error[overlap] rules are overlapping on `(simplify (iadd (iconst 0) (iconst 0)))`: give one of them a higher priority, for example `(rule 1 ...)`
+; nextln: fix Give this rule priority 1 7:5..7:5 => " 1"
+; nextln: related diagnostics/overlap-explain/main.isle 6:0..6:39 overlaps with this rule
+; nextln: diagnostics/overlap-explain/main.isle 6:0..6:39 error[overlap] rules are overlapping on `(simplify (iadd (iconst 0) (iconst 0)))`: give one of them a higher priority, for example `(rule 1 ...)`
+; nextln: fix Give this rule priority 1 6:5..6:5 => " 1"
+; nextln: related diagnostics/overlap-explain/main.isle 7:0..7:39 overlaps with this rule
+(type Value (primitive Value))
+(decl simplify (Value) Value)
+(decl iadd (Value Value) Value)
+(extern extractor infallible iadd iadd_extract)
+(decl iconst (u64) Value)
+(extern extractor infallible iconst iconst_extract)
+(rule (simplify (iadd x (iconst 0))) x)
+(rule (simplify (iadd (iconst 0) y)) y)

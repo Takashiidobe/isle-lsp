@@ -13,6 +13,7 @@ use crate::document::position_in;
 use crate::lints;
 use crate::project::{Loaded, Project, Source};
 use crate::index::{DefKind, Index};
+use crate::rules;
 use crate::syntax::{AtomKind, List, Node, Span};
 
 const SOURCE: &str = "isle-lsp";
@@ -172,16 +173,17 @@ fn place(loaded: &Loaded, found: &mut [Vec<Diagnostic>], error: Error) {
         Error::UnreachableError { msg, span } => ("unreachable", msg, span, Vec::new(), ""),
         Error::RecursionError { msg, span } => ("recursion", msg, span, Vec::new(), ""),
         Error::OverlapError { rules, .. } => {
+            let on = common_input(loaded, &rules).map_or_else(String::new, |pattern| format!(" on `{pattern}`"));
             for (idx, rule) in rules.iter().enumerate() {
                 let others: Vec<IsleSpan> =
                     rules.iter().enumerate().filter(|(other, _)| *other != idx).map(|(_, span)| span.clone()).collect();
                 let fix = loaded.sources.get(rule.from.file).and_then(|source| priority_fix(source, rule));
                 let message = match &fix {
                     Some(fix) => format!(
-                        "rules are overlapping: give one of them a higher priority, for example `(rule {} ...)`",
+                        "rules are overlapping{on}: give one of them a higher priority, for example `(rule {} ...)`",
                         fix.priority
                     ),
-                    None => "rules are overlapping: give one of them a higher priority".to_owned(),
+                    None => format!("rules are overlapping{on}: give one of them a higher priority"),
                 };
                 let before = found[rule.from.file].len();
                 push_isle(loaded, found, "overlap", message, rule.clone(), &others, "overlaps with this rule");
@@ -208,6 +210,28 @@ fn place(loaded: &Loaded, found: &mut [Vec<Diagnostic>], error: Error) {
     if let (Some(fixes), Some(diag)) = (fixes, found.get_mut(file).and_then(|diags| diags.get_mut(before))) {
         diag.data = Some(serde_json::json!({ "fixes": fixes }));
     }
+}
+
+fn common_input(loaded: &Loaded, spans: &[IsleSpan]) -> Option<String> {
+    let all = rules::rules(loaded);
+    let found: Vec<&rules::Rule> = spans
+        .iter()
+        .map(|span| {
+            let source = loaded.sources.get(span.from.file)?;
+            let form = enclosing_form(source, Span { start: span.from.offset, end: span.to.offset });
+            all.iter().find(|rule| rule.file == span.from.file && rule.form == form)
+        })
+        .collect::<Option<_>>()?;
+    let (first, rest) = found.split_first()?;
+    let mut common = rules::shapes(first.text, first.args);
+    for rule in rest {
+        let theirs = rules::shapes(rule.text, rule.args);
+        if rule.head != first.head || theirs.len() != common.len() {
+            return None;
+        }
+        common = common.iter().zip(&theirs).map(|(a, b)| rules::meet(a, b)).collect::<Option<_>>()?;
+    }
+    Some(rules::render(&rules::Shape::Call(first.head.to_owned(), common)))
 }
 
 fn unknown_term_fixes(loaded: &Loaded, message: &str, offset: usize, file: usize) -> Option<Vec<serde_json::Value>> {

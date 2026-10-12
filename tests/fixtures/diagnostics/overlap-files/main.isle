@@ -1,9 +1,9 @@
 ; mode: diagnostics
 ; check: === diagnostics ===
-; nextln: diagnostics/overlap-files/main.isle 0:0..0:21 error[overlap] rules are overlapping: give one of them a higher priority, for example `(rule 1 ...)`
+; nextln: diagnostics/overlap-files/main.isle 0:0..0:21 error[overlap] rules are overlapping on `(simplify _)`: give one of them a higher priority, for example `(rule 1 ...)`
 ; nextln: fix Give this rule priority 1 0:5..0:5 => " 1"
 ; nextln: related diagnostics/overlap-files/prelude.isle 2:0..2:21 overlaps with this rule
-; nextln: diagnostics/overlap-files/prelude.isle 2:0..2:21 error[overlap] rules are overlapping: give one of them a higher priority, for example `(rule 1 ...)`
+; nextln: diagnostics/overlap-files/prelude.isle 2:0..2:21 error[overlap] rules are overlapping on `(simplify _)`: give one of them a higher priority, for example `(rule 1 ...)`
 ; nextln: fix Give this rule priority 1 2:5..2:5 => " 1"
 ; nextln: related diagnostics/overlap-files/main.isle 0:0..0:21 overlaps with this rule
 (rule (simplify x) x)

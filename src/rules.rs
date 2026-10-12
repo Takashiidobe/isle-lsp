@@ -148,6 +148,35 @@ pub fn overlaps(a: &Shape, b: &Shape) -> bool {
     }
 }
 
+pub fn meet(a: &Shape, b: &Shape) -> Option<Shape> {
+    match (a, b) {
+        (Shape::Wild | Shape::Var(_) | Shape::Other, Shape::Wild | Shape::Var(_) | Shape::Other) => Some(Shape::Wild),
+        (Shape::Wild | Shape::Var(_) | Shape::Other, other) | (other, Shape::Wild | Shape::Var(_) | Shape::Other) => {
+            Some(other.clone())
+        }
+        (Shape::And(parts), other) | (other, Shape::And(parts)) => {
+            parts.iter().try_fold(other.clone(), |acc, part| meet(&acc, part))
+        }
+        (Shape::Int(x), Shape::Int(y)) | (Shape::Lit(x), Shape::Lit(y)) => (x == y).then(|| a.clone()),
+        (Shape::Call(x, xs), Shape::Call(y, ys)) if x == y && xs.len() == ys.len() => {
+            let args = xs.iter().zip(ys).map(|(x, y)| meet(x, y)).collect::<Option<Vec<_>>>()?;
+            Some(Shape::Call(x.clone(), args))
+        }
+        _ => None,
+    }
+}
+
+pub fn render(shape: &Shape) -> String {
+    let join = |parts: &[Shape]| parts.iter().map(render).collect::<Vec<_>>().join(" ");
+    match shape {
+        Shape::Wild | Shape::Other => "_".to_owned(),
+        Shape::Var(text) | Shape::Int(text) | Shape::Lit(text) => text.clone(),
+        Shape::And(parts) => format!("(and {})", join(parts)),
+        Shape::Call(head, args) if args.is_empty() => format!("({head})"),
+        Shape::Call(head, args) => format!("({head} {})", join(args)),
+    }
+}
+
 pub fn subsumes(general: &Shape, specific: &Shape) -> bool {
     fn go<'a>(general: &Shape, specific: &'a Shape, bound: &mut HashMap<String, &'a Shape>) -> bool {
         match (general, specific) {
